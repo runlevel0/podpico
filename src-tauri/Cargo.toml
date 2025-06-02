@@ -51,6 +51,9 @@ env_logger = "0.11"
 # System information and USB device detection
 sysinfo = "0.32"
 
+# File system utilities
+dirs = "5.0"
+
 # RSS/XML parsing
 quick-xml = "0.36"
 

@@ -10,6 +10,9 @@ pub enum PodPicoError {
     #[error("HTTP request error: {0}")]
     Http(#[from] reqwest::Error),
     
+    #[error("Network error: {0}")]
+    NetworkError(String),
+    
     #[error("RSS parsing error: {0}")]
     RssParsing(#[from] rss::Error),
     

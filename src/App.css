@@ -91,8 +91,81 @@ button {
   outline: none;
 }
 
-#greet-input {
+#greet-input,
+#rss-input {
   margin-right: 5px;
+  min-width: 300px;
+}
+
+/* Podcast Management Styles */
+.section {
+  margin: 2em 0;
+  padding: 1.5em;
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  background-color: #fafafa;
+}
+
+.section h2 {
+  margin-top: 0;
+  color: #333;
+}
+
+.podcast-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+  margin-top: 1em;
+}
+
+.podcast-item {
+  text-align: left;
+  padding: 1em;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.podcast-item h3 {
+  margin: 0 0 0.5em 0;
+  color: #2c3e50;
+}
+
+.podcast-item p {
+  margin: 0.25em 0;
+  font-size: 0.9em;
+  color: #555;
+}
+
+.podcast-item strong {
+  color: #333;
+}
+
+/* Test RSS URLs */
+.section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.section li {
+  margin: 0.5em 0;
+}
+
+.section li button {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+  color: #1976d2;
+}
+
+.section li button:hover {
+  background-color: #bbdefb;
+}
+
+/* Loading and Error States */
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -112,5 +185,31 @@ button {
   }
   button:active {
     background-color: #0f0f0f69;
+  }
+
+  .section {
+    background-color: #3a3a3a;
+    border-color: #555;
+  }
+
+  .section h2 {
+    color: #f6f6f6;
+  }
+
+  .podcast-item {
+    background-color: #2a2a2a;
+    border-color: #555;
+  }
+
+  .podcast-item h3 {
+    color: #e3f2fd;
+  }
+
+  .podcast-item p {
+    color: #ccc;
+  }
+
+  .podcast-item strong {
+    color: #f6f6f6;
   }
 }
