@@ -16,6 +16,12 @@ impl DatabaseManager {
         Ok(Self { pool })
     }
 
+    pub fn clone_manager(&self) -> Self {
+        Self {
+            pool: self.pool.clone(),
+        }
+    }
+
     pub async fn initialize(&self) -> Result<(), PodPicoError> {
         log::info!("Creating database tables for podcast management user stories");
         
@@ -272,5 +278,339 @@ impl DatabaseManager {
         .await?;
         
         Ok(result.last_insert_rowid())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::tempdir;
+    use tokio_test;
+
+    async fn create_test_db() -> DatabaseManager {
+        // Use in-memory SQLite database for testing
+        let db_url = "sqlite::memory:";
+        
+        let db = DatabaseManager::new(db_url).await.unwrap();
+        db.initialize().await.unwrap();
+        db
+    }
+
+    #[tokio::test]
+    async fn test_database_initialization() {
+        // Test that database tables are created correctly
+        let db = create_test_db().await;
+        
+        // Verify tables exist by attempting basic operations
+        let podcasts = db.get_podcasts().await.unwrap();
+        assert_eq!(podcasts.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_user_story_1_add_podcast() {
+        // User Story #1: Add new podcast subscription via RSS URL
+        let db = create_test_db().await;
+        
+        let podcast = db.add_podcast(
+            "Test Podcast",
+            "https://example.com/feed.xml",
+            Some("A test podcast"),
+            Some("https://example.com/art.jpg"),
+            Some("https://example.com")
+        ).await.unwrap();
+        
+        assert_eq!(podcast.name, "Test Podcast");
+        assert_eq!(podcast.rss_url, "https://example.com/feed.xml");
+        assert_eq!(podcast.description, Some("A test podcast".to_string()));
+        assert_eq!(podcast.artwork_url, Some("https://example.com/art.jpg".to_string()));
+        assert_eq!(podcast.website_url, Some("https://example.com".to_string()));
+        assert_eq!(podcast.episode_count, 0);
+        assert_eq!(podcast.new_episode_count, 0);
+        assert!(podcast.id > 0);
+    }
+
+    #[tokio::test]
+    async fn test_add_podcast_duplicate_url() {
+        // Test that duplicate RSS URLs are rejected
+        let db = create_test_db().await;
+        
+        // Add first podcast
+        db.add_podcast(
+            "Test Podcast 1",
+            "https://example.com/feed.xml",
+            None,
+            None,
+            None
+        ).await.unwrap();
+        
+        // Try to add duplicate URL
+        let result = db.add_podcast(
+            "Test Podcast 2",
+            "https://example.com/feed.xml",
+            None,
+            None,
+            None
+        ).await;
+        
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_podcasts() {
+        // User Story #2, #7: Get all podcasts with episode counts
+        let db = create_test_db().await;
+        
+        // Add multiple podcasts
+        let podcast1 = db.add_podcast("Podcast 1", "https://example1.com/feed.xml", None, None, None).await.unwrap();
+        let podcast2 = db.add_podcast("Podcast 2", "https://example2.com/feed.xml", None, None, None).await.unwrap();
+        
+        let podcasts = db.get_podcasts().await.unwrap();
+        assert_eq!(podcasts.len(), 2);
+        
+        // Should be sorted by name
+        assert_eq!(podcasts[0].name, "Podcast 1");
+        assert_eq!(podcasts[1].name, "Podcast 2");
+    }
+
+    #[tokio::test]
+    async fn test_user_story_4_remove_podcast() {
+        // User Story #4: Remove podcast subscriptions
+        let db = create_test_db().await;
+        
+        let podcast = db.add_podcast("Test Podcast", "https://example.com/feed.xml", None, None, None).await.unwrap();
+        
+        // Add an episode to test cascade deletion
+        let episode_id = db.add_episode(
+            podcast.id,
+            "Test Episode",
+            Some("Description"),
+            "https://example.com/episode.mp3",
+            Some("2023-01-01T00:00:00Z"),
+            Some(1800),
+            Some(25000000)
+        ).await.unwrap();
+        
+        // Remove podcast
+        db.remove_podcast(podcast.id).await.unwrap();
+        
+        // Verify podcast is removed
+        let podcasts = db.get_podcasts().await.unwrap();
+        assert_eq!(podcasts.len(), 0);
+        
+        // Verify episodes are cascade deleted
+        let episodes = db.get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_remove_nonexistent_podcast() {
+        let db = create_test_db().await;
+        
+        // Removing non-existent podcast should not error (returns 0 affected rows)
+        let result = db.remove_podcast(999).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_add_episode() {
+        let db = create_test_db().await;
+        
+        let podcast = db.add_podcast("Test Podcast", "https://example.com/feed.xml", None, None, None).await.unwrap();
+        
+        let episode_id = db.add_episode(
+            podcast.id,
+            "Test Episode",
+            Some("Episode description"),
+            "https://example.com/episode.mp3",
+            Some("2023-01-01T00:00:00Z"),
+            Some(1800), // 30 minutes
+            Some(25000000) // ~25MB
+        ).await.unwrap();
+        
+        assert!(episode_id > 0);
+        
+        // Verify episode was added
+        let episodes = db.get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes.len(), 1);
+        
+        let episode = &episodes[0];
+        assert_eq!(episode.title, "Test Episode");
+        assert_eq!(episode.description, Some("Episode description".to_string()));
+        assert_eq!(episode.episode_url, "https://example.com/episode.mp3");
+        assert_eq!(episode.duration, Some(1800));
+        assert_eq!(episode.file_size, Some(25000000));
+        assert_eq!(episode.status, "new");
+        assert_eq!(episode.downloaded, false);
+        assert_eq!(episode.on_device, false);
+    }
+
+    #[tokio::test]
+    async fn test_user_story_2_get_episodes_by_podcast() {
+        // User Story #2: View all episodes of specific podcast
+        let db = create_test_db().await;
+        
+        let podcast1 = db.add_podcast("Podcast 1", "https://example1.com/feed.xml", None, None, None).await.unwrap();
+        let podcast2 = db.add_podcast("Podcast 2", "https://example2.com/feed.xml", None, None, None).await.unwrap();
+        
+        // Add episodes to podcast 1
+        db.add_episode(podcast1.id, "Episode 1-1", None, "https://example.com/ep1.mp3", Some("2023-01-01T00:00:00Z"), None, None).await.unwrap();
+        db.add_episode(podcast1.id, "Episode 1-2", None, "https://example.com/ep2.mp3", Some("2023-01-02T00:00:00Z"), None, None).await.unwrap();
+        
+        // Add episode to podcast 2
+        db.add_episode(podcast2.id, "Episode 2-1", None, "https://example.com/ep3.mp3", Some("2023-01-03T00:00:00Z"), None, None).await.unwrap();
+        
+        // Get episodes for podcast 1 only
+        let episodes = db.get_episodes(Some(podcast1.id)).await.unwrap();
+        assert_eq!(episodes.len(), 2);
+        
+        // Should be ordered by published date DESC
+        assert_eq!(episodes[0].title, "Episode 1-2");
+        assert_eq!(episodes[1].title, "Episode 1-1");
+        
+        // All episodes should be from podcast 1
+        for episode in &episodes {
+            assert_eq!(episode.podcast_id, podcast1.id);
+            assert_eq!(episode.podcast_name, "Podcast 1");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_user_story_7_get_all_new_episodes() {
+        // User Story #7: View all new episodes across podcasts (Combined Inbox)
+        let db = create_test_db().await;
+        
+        let podcast1 = db.add_podcast("Podcast 1", "https://example1.com/feed.xml", None, None, None).await.unwrap();
+        let podcast2 = db.add_podcast("Podcast 2", "https://example2.com/feed.xml", None, None, None).await.unwrap();
+        
+        // Add episodes with different statuses
+        db.add_episode(podcast1.id, "New Episode 1", None, "https://example.com/ep1.mp3", Some("2023-01-03T00:00:00Z"), None, None).await.unwrap();
+        let episode2_id = db.add_episode(podcast2.id, "New Episode 2", None, "https://example.com/ep2.mp3", Some("2023-01-02T00:00:00Z"), None, None).await.unwrap();
+        let episode3_id = db.add_episode(podcast1.id, "Old Episode", None, "https://example.com/ep3.mp3", Some("2023-01-01T00:00:00Z"), None, None).await.unwrap();
+        
+        // Mark one episode as listened
+        db.update_episode_status(episode3_id, "listened").await.unwrap();
+        
+        // Get all new episodes (no podcast filter)
+        let new_episodes = db.get_episodes(None).await.unwrap();
+        assert_eq!(new_episodes.len(), 2); // Only episodes with "new" status
+        
+        // Should be ordered by published date DESC
+        assert_eq!(new_episodes[0].title, "New Episode 1");
+        assert_eq!(new_episodes[1].title, "New Episode 2");
+        
+        // Episodes should have correct podcast names
+        assert_eq!(new_episodes[0].podcast_name, "Podcast 1");
+        assert_eq!(new_episodes[1].podcast_name, "Podcast 2");
+        
+        // All should have "new" status
+        for episode in &new_episodes {
+            assert_eq!(episode.status, "new");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_user_story_5_update_episode_status() {
+        // User Story #5: Mark episodes as "listened"
+        let db = create_test_db().await;
+        
+        let podcast = db.add_podcast("Test Podcast", "https://example.com/feed.xml", None, None, None).await.unwrap();
+        let episode_id = db.add_episode(podcast.id, "Test Episode", None, "https://example.com/ep.mp3", None, None, None).await.unwrap();
+        
+        // Initially should be "new"
+        let episodes = db.get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes[0].status, "new");
+        
+        // Update to "listened"
+        db.update_episode_status(episode_id, "listened").await.unwrap();
+        
+        // Verify status changed
+        let episodes = db.get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes[0].status, "listened");
+        
+        // Update to "unlistened"
+        db.update_episode_status(episode_id, "unlistened").await.unwrap();
+        
+        // Verify status changed again
+        let episodes = db.get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes[0].status, "unlistened");
+    }
+
+    #[tokio::test]
+    async fn test_update_episode_status_invalid() {
+        let db = create_test_db().await;
+        
+        let podcast = db.add_podcast("Test Podcast", "https://example.com/feed.xml", None, None, None).await.unwrap();
+        let episode_id = db.add_episode(podcast.id, "Test Episode", None, "https://example.com/ep.mp3", None, None, None).await.unwrap();
+        
+        // Try to set invalid status (should be rejected by CHECK constraint)
+        let result = db.update_episode_status(episode_id, "invalid_status").await;
+        assert!(result.is_err());
+        
+        // Status should remain unchanged
+        let episodes = db.get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes[0].status, "new");
+    }
+
+    #[tokio::test]
+    async fn test_update_nonexistent_episode_status() {
+        let db = create_test_db().await;
+        
+        // Try to update non-existent episode
+        let result = db.update_episode_status(999, "listened").await;
+        assert!(result.is_ok()); // SQLx returns Ok even if no rows affected
+    }
+
+    #[tokio::test]
+    async fn test_podcast_episode_counts() {
+        // Test that episode counts are calculated correctly
+        let db = create_test_db().await;
+        
+        let podcast = db.add_podcast("Test Podcast", "https://example.com/feed.xml", None, None, None).await.unwrap();
+        
+        // Add episodes with different statuses
+        let ep1_id = db.add_episode(podcast.id, "Episode 1", None, "https://example.com/ep1.mp3", None, None, None).await.unwrap();
+        let ep2_id = db.add_episode(podcast.id, "Episode 2", None, "https://example.com/ep2.mp3", None, None, None).await.unwrap();
+        let ep3_id = db.add_episode(podcast.id, "Episode 3", None, "https://example.com/ep3.mp3", None, None, None).await.unwrap();
+        
+        // Mark one as listened
+        db.update_episode_status(ep2_id, "listened").await.unwrap();
+        
+        // Get podcast with updated counts
+        let podcast = db.get_podcast_by_id(podcast.id).await.unwrap();
+        assert_eq!(podcast.episode_count, 3);
+        assert_eq!(podcast.new_episode_count, 2); // ep1 and ep3 are still "new"
+        
+        // Mark another as unlistened
+        db.update_episode_status(ep3_id, "unlistened").await.unwrap();
+        
+        let podcast = db.get_podcast_by_id(podcast.id).await.unwrap();
+        assert_eq!(podcast.episode_count, 3);
+        assert_eq!(podcast.new_episode_count, 1); // only ep1 is "new"
+    }
+
+    #[tokio::test]
+    async fn test_get_podcast_by_id_not_found() {
+        let db = create_test_db().await;
+        
+        let result = db.get_podcast_by_id(999).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_add_episode_invalid_podcast() {
+        let db = create_test_db().await;
+        
+        // Try to add episode to non-existent podcast
+        let result = db.add_episode(
+            999,
+            "Test Episode",
+            None,
+            "https://example.com/ep.mp3",
+            None,
+            None,
+            None
+        ).await;
+        
+        assert!(result.is_err()); // Should fail due to foreign key constraint
     }
 } 
