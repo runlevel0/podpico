@@ -9,12 +9,12 @@ This project is designed for **incremental development across multiple AI agent 
 ### Quick Start for AI Agents
 
 1. **Read the context files** in this order:
-   - `ProductOverview.md` - Product vision, user stories, and acceptance criteria
-   - `PROGRESS.md` - Current status and next priorities
-   - `AI_AGENT_INSTRUCTIONS.md` - Complete development guidelines
-   - `SESSION_NOTES.md` - Historical session details
-   - `ISSUES.md` - Known blockers and technical debt
-   - `QUALITY_METRICS.md` - Quality status and targets
+   - `ai_assisted_development/ProductOverview.md` - Product vision, user stories, and acceptance criteria
+   - `ai_assisted_development/PROGRESS.md` - Current status and next priorities
+   - `ai_assisted_development/AI_AGENT_INSTRUCTIONS.md` - Complete development guidelines
+   - `ai_assisted_development/SESSION_NOTES.md` - Historical session details
+   - `ai_assisted_development/ISSUES.md` - Known blockers and technical debt
+   - `ai_assisted_development/QUALITY_METRICS.md` - Quality status and targets
 
 2. **Verify environment**:
    ```bash
@@ -22,7 +22,7 @@ This project is designed for **incremental development across multiple AI agent 
    cargo check && npm run tauri dev --help
    ```
 
-3. **Start development** following the session template in `AI_AGENT_INSTRUCTIONS.md`
+3. **Start development** following the session template in `ai_assisted_development/AI_AGENT_INSTRUCTIONS.md`
 
 ## 📋 Project Status
 
@@ -93,13 +93,15 @@ podpico/
 │   │   ├── config.rs            # Configuration management
 │   │   └── error.rs             # Error type definitions
 │   └── Cargo.toml               # Rust dependencies
-├── ImplementationPlan.md         # Comprehensive project plan
-├── PROGRESS.md                   # Session-by-session progress
-├── SESSION_NOTES.md              # Detailed session logs
-├── ISSUES.md                     # Known issues and blockers
-├── QUALITY_METRICS.md            # Quality tracking
-├── AI_AGENT_INSTRUCTIONS.md      # AI development guidelines
-└── package.json                  # Node.js dependencies
+├── ai_assisted_development/           # AI-assisted development files
+│   ├── ImplementationPlan.md         # Comprehensive project plan
+│   ├── PROGRESS.md                   # Session-by-session progress
+│   ├── SESSION_NOTES.md              # Detailed session logs
+│   ├── ISSUES.md                     # Known issues and blockers
+│   ├── QUALITY_METRICS.md            # Quality tracking
+│   ├── AI_AGENT_INSTRUCTIONS.md      # AI development guidelines
+│   └── ProductOverview.md            # Product vision and requirements
+├── package.json                  # Node.js dependencies
 ```
 
 ## 🎯 Development Phases
@@ -153,9 +155,9 @@ podpico/
    ```
 
 2. **Review the planning documents**:
-   - Read `ImplementationPlan.md` for complete architecture
-   - Check `PROGRESS.md` for current status
-   - Review `AI_AGENT_INSTRUCTIONS.md` for development guidelines
+   - Read `ai_assisted_development/ImplementationPlan.md` for complete architecture
+   - Check `ai_assisted_development/PROGRESS.md` for current status
+   - Review `ai_assisted_development/AI_AGENT_INSTRUCTIONS.md` for development guidelines
 
 3. **Start development**:
    ```bash
@@ -166,7 +168,7 @@ podpico/
 
 This project uses an AI-assisted development methodology. Each development session:
 
-1. **Follows the session template** in `AI_AGENT_INSTRUCTIONS.md`
+1. **Follows the session template** in `ai_assisted_development/AI_AGENT_INSTRUCTIONS.md`
 2. **Updates progress tracking files** with current status
 3. **Maintains high code quality** standards
 4. **Documents issues and decisions** for future sessions
@@ -179,9 +181,9 @@ This project uses an AI-assisted development methodology. Each development sessi
 ## 🤝 Support
 
 For development questions or issues:
-1. Check `ISSUES.md` for known problems
-2. Review `SESSION_NOTES.md` for historical context
-3. Follow troubleshooting guides in `AI_AGENT_INSTRUCTIONS.md`
+1. Check `ai_assisted_development/ISSUES.md` for known problems
+2. Review `ai_assisted_development/SESSION_NOTES.md` for historical context
+3. Follow troubleshooting guides in `ai_assisted_development/AI_AGENT_INSTRUCTIONS.md`
 
 ---
 

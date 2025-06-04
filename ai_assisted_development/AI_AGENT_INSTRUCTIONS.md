@@ -24,13 +24,13 @@ cd .. && npm run tauri dev --help
 
 ### 2. Context Loading
 Read these files in order to understand current state and product requirements:
-1. **`ProductOverview.md`** - Product vision, user stories, acceptance criteria, and UI specifications
-2. **`PROGRESS.md`** - Current phase, completed tasks, next priorities
-3. **`AI_AGENT_INSTRUCTIONS.md`** - Complete development guidelines (this file)
-4. **`SESSION_NOTES.md`** - Detailed history of previous sessions
-5. **`ISSUES.md`** - Known blockers and technical debt
-6. **`QUALITY_METRICS.md`** - Current quality status and targets
-7. **`ImplementationPlan.md`** - Overall project architecture and timeline
+1. **`ai_assisted_development/ProductOverview.md`** - Product vision, user stories, acceptance criteria, and UI specifications
+2. **`ai_assisted_development/PROGRESS.md`** - Current phase, completed tasks, next priorities
+3. **`ai_assisted_development/AI_AGENT_INSTRUCTIONS.md`** - Complete development guidelines (this file)
+4. **`ai_assisted_development/SESSION_NOTES.md`** - Detailed history of previous sessions
+5. **`ai_assisted_development/ISSUES.md`** - Known blockers and technical debt
+6. **`ai_assisted_development/QUALITY_METRICS.md`** - Current quality status and targets
+7. **`ai_assisted_development/ImplementationPlan.md`** - Overall project architecture and timeline
 
 ### 3. Current State Assessment
 ```bash
@@ -55,7 +55,7 @@ Copy this template to start each session:
 # Session [N] - [DATE] - Phase [X], Week [Y]
 
 ## Pre-Session Checklist
-- [ ] Read ProductOverview.md for product context and user stories
+- [ ] Read ai_assisted_development/ProductOverview.md for product context and user stories
 - [ ] Read all progress tracking files
 - [ ] Verified development environment works
 - [ ] Identified current state from git status
@@ -71,10 +71,10 @@ Secondary objectives (if time permits):
 - [ ] [Nice-to-have objective 2]
 
 ## User Stories Addressed
-- **User Story #X**: [Brief description from ProductOverview.md]
-  - Acceptance Criteria: [List key criteria from ProductOverview.md]
-- **User Story #Y**: [Brief description from ProductOverview.md]
-  - Acceptance Criteria: [List key criteria from ProductOverview.md]
+- **User Story #X**: [Brief description from ai_assisted_development/ProductOverview.md]
+  - Acceptance Criteria: [List key criteria from ai_assisted_development/ProductOverview.md]
+- **User Story #Y**: [Brief description from ai_assisted_development/ProductOverview.md]
+  - Acceptance Criteria: [List key criteria from ai_assisted_development/ProductOverview.md]
 
 ## Success Criteria
 - [ ] All primary objectives completed
@@ -110,7 +110,7 @@ Secondary objectives (if time permits):
 
 #### Always Start with User Stories
 Before implementing any feature:
-1. **Identify the user story** from `ProductOverview.md`
+1. **Identify the user story** from `ai_assisted_development/ProductOverview.md`
 2. **Read the acceptance criteria** carefully
 3. **Understand the user need** behind the feature
 4. **Design implementation** to meet acceptance criteria exactly
@@ -314,7 +314,7 @@ const PodcastEpisodeList: React.FC<{ podcastId: number }> = ({ podcastId }) => {
 ## 🔄 Session Workflow
 
 ### 1. Start with User Stories
-- **Choose user stories** from `ProductOverview.md` that align with current phase
+- **Choose user stories** from `ai_assisted_development/ProductOverview.md` that align with current phase
 - **Read acceptance criteria** carefully before starting implementation
 - **Break down user stories** into implementable technical tasks
 - **Test against acceptance criteria** not just technical specs
@@ -336,7 +336,7 @@ npm run tauri dev        # Verify app still runs
 
 ### 4. Handle Blockers Gracefully
 If you encounter a blocker:
-1. **Document it immediately** in `ISSUES.md` with user story context
+1. **Document it immediately** in `ai_assisted_development/ISSUES.md` with user story context
 2. **Implement a workaround** if possible that still meets acceptance criteria
 3. **Mark with TODO** for future resolution with user story reference
 4. **Continue with alternative user stories**
@@ -345,24 +345,24 @@ If you encounter a blocker:
 ## 📊 Progress Tracking
 
 ### Required Updates Every Session
-1. **`PROGRESS.md`**
+1. **`ai_assisted_development/PROGRESS.md`**
    - Update completion status of current tasks **with user story references**
    - Mark completed items with ✅ and note which user stories were addressed
    - Update "Last Updated" date
    - Add session to history with user story achievements
 
-2. **`SESSION_NOTES.md`**
+2. **`ai_assisted_development/SESSION_NOTES.md`**
    - Add detailed session log **with user story context**
    - Document issues encountered and resolutions **for specific user stories**
    - Note any architectural decisions made **and their impact on user stories**
    - Record lessons learned **about user story implementation**
 
-3. **`ISSUES.md`**
+3. **`ai_assisted_development/ISSUES.md`**
    - Add any new issues discovered **with user story impact assessment**
    - Update status of existing issues
    - Move resolved issues to resolved section **with user story completion notes**
 
-4. **`QUALITY_METRICS.md`**
+4. **`ai_assisted_development/QUALITY_METRICS.md`**
    - Update compilation status
    - Record any quality improvements **that affect user story delivery**
    - Update test coverage if tests added **for user story validation**
@@ -432,8 +432,8 @@ pub async fn initialize(&self) -> Result<(), PodPicoError> {
 5. **Validate acceptance criteria** are met
 
 ### Creating Frontend Components (UI/UX from ProductOverview)
-Reference the detailed UI specifications in `ProductOverview.md`:
-1. **Follow 3-pane layout** as specified in ProductOverview.md
+Reference the detailed UI specifications in `ai_assisted_development/ProductOverview.md`:
+1. **Follow 3-pane layout** as specified in ai_assisted_development/ProductOverview.md
 2. **Implement email-app inspired navigation** (left sidebar, episode list, details)
 3. **Use specified interaction patterns** (Combined Inbox, podcast folders, etc.)
 4. **Test against UI acceptance criteria** from user stories
@@ -441,7 +441,7 @@ Reference the detailed UI specifications in `ProductOverview.md`:
 ## 🚨 Emergency Protocols
 
 ### If User Story Acceptance Criteria Can't Be Met
-1. **Document the limitation** in `ISSUES.md` with user story reference
+1. **Document the limitation** in `ai_assisted_development/ISSUES.md` with user story reference
 2. **Implement closest possible approximation** that still provides user value
 3. **Mark as technical debt** for future improvement
 4. **Continue with other user stories** to maintain progress
@@ -492,10 +492,10 @@ Before ending a session:
 - [ ] Architecture decisions recorded **with user story impact**
 
 ### Progress Tracking
-- [ ] `PROGRESS.md` updated **with user story completion status**
-- [ ] `SESSION_NOTES.md` updated **with user story achievements**
-- [ ] `ISSUES.md` updated **with any user story blockers**
-- [ ] `QUALITY_METRICS.md` updated if applicable
+- [ ] `ai_assisted_development/PROGRESS.md` updated **with user story completion status**
+- [ ] `ai_assisted_development/SESSION_NOTES.md` updated **with user story achievements**
+- [ ] `ai_assisted_development/ISSUES.md` updated **with any user story blockers**
+- [ ] `ai_assisted_development/QUALITY_METRICS.md` updated if applicable
 
 ### Handoff Preparation
 - [ ] Clear instructions for next session **with user story priorities**
@@ -555,7 +555,7 @@ Before ending a session:
 ## 📚 Reference Resources
 
 ### Product Context
-- **`ProductOverview.md`** - Complete product vision and user stories
+- **`ai_assisted_development/ProductOverview.md`** - Complete product vision and user stories
 - **User Story Acceptance Criteria** - Detailed requirements for each feature
 
 ### Tauri Documentation
