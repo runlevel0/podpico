@@ -17,8 +17,16 @@ npm --version     # Should be 10.x+
 rustc --version   # Should be 1.87.0+
 cargo --version   # Should be 1.87.0+
 
-# Test basic compilation
-cd src-tauri && cargo check
+# MANDATORY: Run linting and fix all issues
+cargo clippy --all-targets --all-features -- -D warnings
+npm run lint || echo "Frontend linting not configured yet"
+
+# MANDATORY: Run all tests and ensure they pass
+cargo test --all
+npm test || echo "Frontend tests not configured yet"
+
+# Test basic compilation with zero warnings
+cd src-tauri && cargo check --all-targets --all-features
 cd .. && npm run tauri dev --help
 ```
 
@@ -34,6 +42,20 @@ Read these files in order to understand current state and product requirements:
 
 ### 3. Current State Assessment
 ```bash
+# MANDATORY: Check compilation with zero tolerance for warnings
+cargo clippy --all-targets --all-features -- -D warnings
+if [ $? -ne 0 ]; then
+    echo "❌ STOP: Fix all clippy warnings before proceeding"
+    exit 1
+fi
+
+# MANDATORY: Run all existing tests
+cargo test --all
+if [ $? -ne 0 ]; then
+    echo "❌ STOP: All tests must pass before proceeding"
+    exit 1
+fi
+
 # Check what compiles
 cargo check --all
 
@@ -47,6 +69,93 @@ git log --oneline -10
 npm run tauri dev
 ```
 
+## 🧪 MANDATORY TESTING & QUALITY PROTOCOL
+
+### Pre-Development Quality Gates
+**EVERY SESSION MUST START WITH THESE PASSING:**
+
+```bash
+# 1. Zero compilation warnings allowed
+cargo clippy --all-targets --all-features -- -D warnings
+
+# 2. All tests must pass
+cargo test --all
+
+# 3. Code formatting must be consistent
+cargo fmt --all -- --check
+
+# 4. Frontend linting (when configured)
+npm run lint
+
+# 5. Security audit
+cargo audit || echo "Consider running: cargo install cargo-audit"
+```
+
+### Test-First Development Protocol
+**MANDATORY: Write tests BEFORE implementing features**
+
+```rust
+// Example: User Story #3 test BEFORE implementation
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_user_story_3_download_episode_acceptance_criteria() {
+        // Acceptance Criteria: Episode download completes within reasonable time
+        // Acceptance Criteria: Progress indicator shows during download
+        // Acceptance Criteria: Downloaded episode marked as available for transfer
+        
+        // Arrange
+        let episode_id = create_test_episode().await;
+        let start_time = std::time::Instant::now();
+        
+        // Act
+        let result = download_episode(episode_id).await;
+        let elapsed = start_time.elapsed();
+        
+        // Assert
+        assert!(result.is_ok(), "Episode download should succeed");
+        assert!(elapsed < Duration::from_secs(30), "Download should complete within 30 seconds");
+        
+        // Verify episode marked as downloaded
+        let episode = get_episode(episode_id).await.unwrap();
+        assert!(episode.downloaded, "Episode should be marked as downloaded");
+    }
+
+    #[tokio::test]
+    async fn test_user_story_3_download_progress_tracking() {
+        // Acceptance Criteria: User can see download progress percentage
+        // Implementation should provide progress callbacks
+        
+        let episode_id = create_test_episode().await;
+        let mut progress_updates = Vec::new();
+        
+        let result = download_episode_with_progress(episode_id, |progress| {
+            progress_updates.push(progress);
+        }).await;
+        
+        assert!(result.is_ok());
+        assert!(!progress_updates.is_empty(), "Should receive progress updates");
+        assert!(progress_updates.last().unwrap() >= &100.0, "Should reach 100% progress");
+    }
+}
+```
+
+### Continuous Quality Checking
+**RUN AFTER EVERY SIGNIFICANT CHANGE:**
+
+```bash
+# After each function/module implemented:
+cargo clippy --all-targets --all-features -- -D warnings  # Fix ALL warnings
+cargo test --all                                          # ALL tests must pass
+cargo fmt --all                                          # Auto-format code
+
+# After each user story feature completed:
+npm run tauri dev  # Verify app still runs
+# Manual testing against acceptance criteria
+```
+
 ## 📋 Session Planning Template
 
 Copy this template to start each session:
@@ -54,17 +163,33 @@ Copy this template to start each session:
 ```markdown
 # Session [N] - [DATE] - Phase [X], Week [Y]
 
-## Pre-Session Checklist
-- [ ] Read ai_assisted_development/ProductOverview.md for product context and user stories
-- [ ] Read all progress tracking files
-- [ ] Verified development environment works
-- [ ] Identified current state from git status
-- [ ] Application compiles successfully
+## Pre-Session Quality Checklist ⚠️ MANDATORY
+- [ ] ✅ cargo clippy passes with zero warnings
+- [ ] ✅ cargo test passes (100% existing tests)
+- [ ] ✅ cargo fmt applied and code formatted
+- [ ] ✅ Read ai_assisted_development/ProductOverview.md for product context and user stories
+- [ ] ✅ Read all progress tracking files
+- [ ] ✅ Verified development environment works
+- [ ] ✅ Identified current state from git status
+- [ ] ✅ Application compiles and runs successfully
+
+## Test-Driven Development Plan ⚠️ MANDATORY
+Before implementing ANY feature:
+- [ ] Write failing test for user story acceptance criteria
+- [ ] Implement minimum code to make test pass
+- [ ] Refactor while keeping tests green
+- [ ] Add additional tests for edge cases
 
 ## Session Objectives
 Primary objectives (must complete):
 - [ ] [Specific, measurable objective 1 - reference user story #X]
+  - [ ] Tests written FIRST for acceptance criteria
+  - [ ] Implementation passes all tests
+  - [ ] Manual validation against acceptance criteria
 - [ ] [Specific, measurable objective 2 - reference user story #Y]
+  - [ ] Tests written FIRST for acceptance criteria  
+  - [ ] Implementation passes all tests
+  - [ ] Manual validation against acceptance criteria
 
 Secondary objectives (if time permits):
 - [ ] [Nice-to-have objective 1]
@@ -73,522 +198,424 @@ Secondary objectives (if time permits):
 ## User Stories Addressed
 - **User Story #X**: [Brief description from ai_assisted_development/ProductOverview.md]
   - Acceptance Criteria: [List key criteria from ai_assisted_development/ProductOverview.md]
+  - Test Coverage Required: [List specific test cases needed]
 - **User Story #Y**: [Brief description from ai_assisted_development/ProductOverview.md]
   - Acceptance Criteria: [List key criteria from ai_assisted_development/ProductOverview.md]
+  - Test Coverage Required: [List specific test cases needed]
 
-## Success Criteria
-- [ ] All primary objectives completed
-- [ ] User story acceptance criteria met
-- [ ] Code compiles without warnings
-- [ ] Tests pass (when applicable)
-- [ ] Progress files updated
-- [ ] Changes tested manually against acceptance criteria
+## Quality Gates ⚠️ MANDATORY FOR COMPLETION
+- [ ] ALL clippy warnings resolved
+- [ ] ALL tests pass (existing + new)
+- [ ] Test coverage ≥80% for new code
+- [ ] Manual acceptance criteria validation completed
+- [ ] No security vulnerabilities introduced
+- [ ] Performance requirements met (timing against acceptance criteria)
+- [ ] Error handling comprehensive with user-friendly messages
+- [ ] Logging added with user story context
 
-## Implementation Plan
+## Implementation Plan (Test-First)
 1. **[Task 1]** (Est: X minutes) - Addresses User Story #X
-   - Specific steps to complete this task
-   - Expected files to modify
-   - Testing approach using acceptance criteria
+   - [ ] Write failing tests for acceptance criteria
+   - [ ] Implement minimum viable solution
+   - [ ] Ensure all tests pass
+   - [ ] Manual validation against acceptance criteria
+   - [ ] Run full quality check (clippy, tests, formatting)
 
 2. **[Task 2]** (Est: X minutes) - Addresses User Story #Y
-   - Specific steps to complete this task
-   - Expected files to modify
-   - Testing approach using acceptance criteria
+   - [ ] Write failing tests for acceptance criteria
+   - [ ] Implement minimum viable solution
+   - [ ] Ensure all tests pass
+   - [ ] Manual validation against acceptance criteria
+   - [ ] Run full quality check (clippy, tests, formatting)
 
-## Quality Gates
-- [ ] Code follows Rust/TypeScript best practices
-- [ ] All errors properly handled with PodPicoError
-- [ ] Appropriate logging added
-- [ ] No security vulnerabilities introduced
-- [ ] Performance considerations addressed
-- [ ] User story acceptance criteria validated
+## Continuous Quality Protocol
+After EACH significant change:
+- [ ] cargo clippy --all-targets --all-features -- -D warnings
+- [ ] cargo test --all
+- [ ] Manual functionality test
+- [ ] Commit only if ALL quality gates pass
 ```
 
 ## 🎯 Development Guidelines
 
-### User Story Driven Development
+### Test-Driven Development (MANDATORY)
 
-#### Always Start with User Stories
-Before implementing any feature:
-1. **Identify the user story** from `ai_assisted_development/ProductOverview.md`
-2. **Read the acceptance criteria** carefully
-3. **Understand the user need** behind the feature
-4. **Design implementation** to meet acceptance criteria exactly
-5. **Test against acceptance criteria** not just technical specs
+#### Always Write Tests First
+For every user story implementation:
+1. **Write failing test** that validates acceptance criteria
+2. **Implement minimum code** to make test pass
+3. **Refactor** while keeping tests green
+4. **Add comprehensive tests** for edge cases and error conditions
 
-#### Example: User Story #1 Implementation
+#### Example: User Story #3 Test-First Implementation
 ```rust
-// User Story #1: Add new podcast subscription via RSS URL
-// Acceptance Criteria:
-// - Given a valid RSS feed URL, when I paste it in the add podcast dialog, 
-//   then the app validates the feed within 5 seconds
+// STEP 1: Write failing test FIRST
+#[tokio::test]
+async fn test_user_story_3_download_episode() {
+    // This test will fail initially - that's expected
+    let episode_id = 1;
+    let result = download_episode(episode_id).await;
+    assert!(result.is_ok());
+}
 
+// STEP 2: Implement minimum code to pass test
 #[tauri::command]
-pub async fn add_podcast(rss_url: String) -> Result<Podcast, String> {
+pub async fn download_episode(episode_id: i64) -> Result<(), String> {
+    log::info!("Downloading episode {} (User Story #3)", episode_id);
+    
+    // Minimum implementation - will expand based on acceptance criteria
+    Ok(())
+}
+
+// STEP 3: Enhance test to match acceptance criteria
+#[tokio::test]
+async fn test_user_story_3_acceptance_criteria() {
+    // Acceptance Criteria: Progress tracking during download
+    // Acceptance Criteria: Episode marked as downloaded when complete
+    // Acceptance Criteria: Error handling for network failures
+    
+    let episode_id = create_test_episode().await;
+    
+    // Test progress tracking
+    let mut progress_received = false;
+    let result = download_episode_with_progress(episode_id, |_| {
+        progress_received = true;
+    }).await;
+    
+    assert!(result.is_ok());
+    assert!(progress_received, "Should receive progress updates");
+    
+    // Test episode status update
+    let episode = get_episode(episode_id).await.unwrap();
+    assert!(episode.downloaded, "Episode should be marked as downloaded");
+}
+```
+
+### Code Quality Standards (ZERO TOLERANCE)
+
+#### Rust Backend Standards
+```rust
+// ✅ MANDATORY: All functions must have comprehensive error handling
+async fn add_podcast(rss_url: String) -> Result<Podcast, PodPicoError> {
     log::info!("Adding podcast: {} (User Story #1)", rss_url);
     
-    // Acceptance Criteria: Validate feed within 5 seconds
+    // MANDATORY: Input validation
+    if rss_url.trim().is_empty() {
+        return Err(PodPicoError::InvalidRssUrl("Empty URL".to_string()));
+    }
+    
+    // MANDATORY: Timeout handling (User Story #1: validate within 5 seconds)
     let timeout = Duration::from_secs(5);
     let validation_result = timeout(timeout, validate_rss_feed(&rss_url)).await;
     
     match validation_result {
         Ok(Ok(podcast_info)) => {
-            // Feed is valid, proceed with subscription
             let podcast = create_podcast_from_info(podcast_info).await?;
+            log::info!("User Story #1 completed successfully: {}", podcast.name);
             Ok(podcast)
         },
         Ok(Err(e)) => {
-            // Invalid feed - clear error message (acceptance criteria)
-            Err(format!("Invalid RSS feed: {}", e))
+            log::warn!("User Story #1 validation failed: {}", e);
+            Err(PodPicoError::InvalidRssUrl(format!("Invalid RSS feed: {}", e)))
         },
         Err(_) => {
-            // Timeout - didn't validate within 5 seconds
-            Err("Feed validation timed out after 5 seconds".to_string())
+            log::error!("User Story #1 timeout: Feed validation exceeded 5 seconds");
+            Err(PodPicoError::NetworkTimeout("Feed validation timed out after 5 seconds".to_string()))
         }
     }
 }
-```
 
-### Code Quality Standards
-
-#### Rust Backend
-```rust
-// ✅ Good: Proper error handling with user story context
-async fn add_podcast(rss_url: String) -> Result<Podcast, PodPicoError> {
-    log::info!("Adding podcast: {} (User Story #1)", rss_url);
-    
-    // Validate input (User Story #1 acceptance criteria)
-    if rss_url.trim().is_empty() {
-        return Err(PodPicoError::InvalidRssUrl("Empty URL".to_string()));
-    }
-    
-    // Implementation
-    Ok(podcast)
-}
-
-// ❌ Bad: No reference to user story or acceptance criteria
-fn add_podcast_bad(rss_url: String) -> Podcast {
-    rss_url.parse().unwrap() // Can panic!
+// ❌ FORBIDDEN: Any code without proper error handling
+fn bad_example(rss_url: String) -> Podcast {
+    rss_url.parse().unwrap() // ❌ Can panic - absolutely forbidden
 }
 ```
 
-#### Error Handling Pattern
-```rust
-// Always use this pattern for external operations
-// Include user story context in error messages where appropriate
-match some_operation().await {
-    Ok(result) => {
-        log::info!("Operation succeeded for User Story #X");
-        result
-    },
-    Err(e) => {
-        log::error!("Operation failed for User Story #X: {}", e);
-        return Err(PodPicoError::from(e));
-    }
-}
+#### Linting Standards (ZERO WARNINGS ALLOWED)
+```bash
+# MANDATORY: Must pass before ANY commit
+cargo clippy --all-targets --all-features -- -D warnings
+
+# Common issues to fix immediately:
+# - Unused imports: Remove them
+# - Unused variables: Use them or prefix with _underscore
+# - Inefficient code: Follow clippy suggestions
+# - Missing documentation: Add comprehensive comments
+# - Unreachable code: Remove or fix logic
 ```
 
-#### Logging Standards
+#### Testing Standards (MANDATORY COVERAGE)
 ```rust
-// Use appropriate log levels and include user story context
-log::debug!("Detailed debugging info for User Story #X: {:?}", data);
-log::info!("User Story #X: Normal operation: {}", operation);
-log::warn!("User Story #X: Unusual but recoverable: {}", warning);
-log::error!("User Story #X failed: {}", error);
-```
-
-### Testing Requirements
-
-#### User Story Validation Tests
-```rust
+// MANDATORY: Every public function needs tests
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Test based on User Story #1 acceptance criteria
+    // Test success case (happy path)
     #[tokio::test]
-    async fn test_user_story_1_valid_rss_feed() {
-        // Acceptance Criteria: Given a valid RSS feed URL, when I paste it 
-        // in the add podcast dialog, then the app validates the feed within 5 seconds
-        
-        // Arrange
-        let url = "https://example.com/valid-feed.xml".to_string();
-        let start_time = std::time::Instant::now();
-        
-        // Act
-        let result = add_podcast(url).await;
-        let elapsed = start_time.elapsed();
-        
-        // Assert
-        assert!(result.is_ok(), "Should accept valid RSS feed");
-        assert!(elapsed < Duration::from_secs(5), "Should validate within 5 seconds");
+    async fn test_function_success() {
+        // Test implementation
     }
 
+    // Test error cases (all error branches)
     #[tokio::test]
-    async fn test_user_story_1_invalid_url_clear_error() {
-        // Acceptance Criteria: Given an invalid URL, when I attempt to subscribe, 
-        // then I receive a clear error message explaining the issue
-        
-        // Arrange
-        let url = "invalid-url".to_string();
-        
-        // Act
-        let result = add_podcast(url).await;
-        
-        // Assert
-        assert!(result.is_err(), "Should reject invalid URL");
-        let error_msg = result.unwrap_err().to_string();
-        assert!(!error_msg.is_empty(), "Should provide clear error message");
-        assert!(error_msg.contains("invalid") || error_msg.contains("Invalid"), 
-                "Error message should explain the issue clearly");
+    async fn test_function_invalid_input() {
+        // Test error handling
+    }
+
+    // Test acceptance criteria (user story validation)
+    #[tokio::test]
+    async fn test_user_story_acceptance_criteria() {
+        // Test against specific acceptance criteria
+    }
+
+    // Test performance requirements (when applicable)
+    #[tokio::test]
+    async fn test_performance_requirements() {
+        // Ensure timing requirements met
     }
 }
 ```
 
-### Frontend Guidelines
+## 🔄 Session Workflow (UPDATED)
 
-#### Component Structure with User Story Context
-```typescript
-// User Story #2: View all episodes of a specific podcast
-// Acceptance Criteria: Given I select a podcast folder, when the episode list loads, 
-// then all episodes for that podcast are displayed within 3 seconds
-
-const PodcastEpisodeList: React.FC<{ podcastId: number }> = ({ podcastId }) => {
-    const [episodes, setEpisodes] = useState<Episode[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [loadStartTime, setLoadStartTime] = useState<number>(0);
-
-    useEffect(() => {
-        loadEpisodes();
-    }, [podcastId]);
-
-    const loadEpisodes = async () => {
-        try {
-            setLoading(true);
-            const startTime = Date.now();
-            setLoadStartTime(startTime);
-            
-            // User Story #2: Load episodes for specific podcast
-            const result = await invoke('get_episodes', { podcast_id: podcastId });
-            
-            const loadTime = Date.now() - startTime;
-            console.log(`User Story #2: Episodes loaded in ${loadTime}ms`);
-            
-            // Acceptance Criteria: Should display within 3 seconds
-            if (loadTime > 3000) {
-                console.warn(`User Story #2: Load time exceeded 3 seconds (${loadTime}ms)`);
-            }
-            
-            setEpisodes(result);
-        } catch (err) {
-            setError(`Failed to load episodes: ${err}`);
-            console.error('User Story #2 failed:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // User Story #2: Show episodes with title, date, duration, and status icon
-    if (loading) return <div>Loading episodes...</div>;
-    if (error) return <div>Error: {error}</div>;
-    
-    return (
-        <div className="episode-list">
-            {episodes.map(episode => (
-                <EpisodeItem 
-                    key={episode.id} 
-                    episode={episode}
-                    // User Story #2: Each episode shows title, date, duration, and status icon
-                    showTitle={true}
-                    showDate={true}
-                    showDuration={true}
-                    showStatusIcon={true}
-                />
-            ))}
-        </div>
-    );
-};
-```
-
-## 🔄 Session Workflow
-
-### 1. Start with User Stories
-- **Choose user stories** from `ai_assisted_development/ProductOverview.md` that align with current phase
-- **Read acceptance criteria** carefully before starting implementation
-- **Break down user stories** into implementable technical tasks
-- **Test against acceptance criteria** not just technical specs
-
-### 2. Test Frequently
+### 1. Start with Quality Verification
 ```bash
-# After each significant change:
-cargo check              # Quick syntax check
-cargo test               # Run tests (include user story validation tests)
-npm run tauri dev        # Verify app still runs
-# Manual testing against acceptance criteria
+# ❌ DO NOT PROCEED IF ANY OF THESE FAIL
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all
+cargo fmt --all -- --check
 ```
 
-### 3. Document as You Go
-- **Reference user stories** in commit messages and code comments
-- **Update TODO comments** when completing user story features
-- **Add new TODO comments** for future work discovered
-- **Update progress files** with user story completion status
+### 2. Test-First User Story Implementation
+- **Choose user stories** from `ai_assisted_development/ProductOverview.md`
+- **Write failing tests** for acceptance criteria FIRST
+- **Implement minimum code** to pass tests
+- **Enhance** to fully meet acceptance criteria
+- **Test manually** against user scenarios
 
-### 4. Handle Blockers Gracefully
+### 3. Continuous Quality Assurance
+```bash
+# After EVERY significant change:
+cargo clippy --all-targets --all-features -- -D warnings  # Must be clean
+cargo test --all                                          # Must pass
+cargo fmt --all                                          # Auto-format
+
+# Before ANY commit:
+npm run tauri dev        # Must run successfully
+# Manual test of implemented user story acceptance criteria
+```
+
+### 4. Handle Blockers with Testing
 If you encounter a blocker:
-1. **Document it immediately** in `ai_assisted_development/ISSUES.md` with user story context
-2. **Implement a workaround** if possible that still meets acceptance criteria
-3. **Mark with TODO** for future resolution with user story reference
-4. **Continue with alternative user stories**
-5. **Don't get stuck** - move to next priority user story
+1. **Write test that reproduces the issue**
+2. **Document in `ai_assisted_development/ISSUES.md`** with user story context
+3. **Implement workaround with tests** if possible
+4. **Mark with TODO and test** for future resolution
+5. **Continue with alternative user stories**
 
-## 📊 Progress Tracking
+## 📊 MANDATORY Quality Metrics
 
-### Required Updates Every Session
-1. **`ai_assisted_development/PROGRESS.md`**
-   - Update completion status of current tasks **with user story references**
-   - Mark completed items with ✅ and note which user stories were addressed
-   - Update "Last Updated" date
-   - Add session to history with user story achievements
+### Session Completion Requirements
+**ALL MUST BE TRUE BEFORE ENDING SESSION:**
 
-2. **`ai_assisted_development/SESSION_NOTES.md`**
-   - Add detailed session log **with user story context**
-   - Document issues encountered and resolutions **for specific user stories**
-   - Note any architectural decisions made **and their impact on user stories**
-   - Record lessons learned **about user story implementation**
+```bash
+# Code Quality (Zero Tolerance)
+[ ] cargo clippy --all-targets --all-features -- -D warnings  # ZERO warnings
+[ ] cargo test --all                                          # 100% pass rate
+[ ] cargo fmt --all                                          # Consistent formatting
 
-3. **`ai_assisted_development/ISSUES.md`**
-   - Add any new issues discovered **with user story impact assessment**
-   - Update status of existing issues
-   - Move resolved issues to resolved section **with user story completion notes**
+# Functionality 
+[ ] npm run tauri dev                                        # App runs successfully
+[ ] Manual testing completed against acceptance criteria     # User story validation
+[ ] All implemented features work as specified              # No broken functionality
 
-4. **`ai_assisted_development/QUALITY_METRICS.md`**
-   - Update compilation status
-   - Record any quality improvements **that affect user story delivery**
-   - Update test coverage if tests added **for user story validation**
+# Test Coverage (New Standard)
+[ ] New code has ≥80% test coverage                        # Measured, not estimated
+[ ] All user story acceptance criteria have tests          # Comprehensive validation
+[ ] All error paths tested                                 # Robust error handling
 
-## 🛠️ Common Development Tasks
+# Documentation
+[ ] User story context in all code comments               # Clear traceability
+[ ] Progress files updated with test status               # Include test metrics
+[ ] Issues documented with reproduction tests             # Testable problem statements
+```
 
-### Setting Up Database Schema (User Story Driven)
-```rust
-// User Stories #1, #2, #3, #4: Podcast and Episode Management
-// These user stories require podcast and episode data storage
+### Testing Framework Setup (HIGH PRIORITY)
+**MUST be implemented in next session if not already done:**
 
-pub async fn initialize(&self) -> Result<(), PodPicoError> {
-    log::info!("Creating database tables for podcast management user stories");
-    
-    // User Story #1: Add podcast subscription
-    // User Story #4: Remove podcast subscription
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS podcasts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            rss_url TEXT UNIQUE NOT NULL,
-            description TEXT,
-            artwork_url TEXT,
-            website_url TEXT,
-            last_updated DATETIME,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    "#)
-    .execute(&self.pool)
-    .await?;
-    
-    // User Story #2: View episodes of specific podcast
-    // User Story #3: Download episodes
-    // User Story #5: Mark episodes as listened
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS episodes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            podcast_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            description TEXT,
-            episode_url TEXT NOT NULL,
-            published_date DATETIME,
-            duration INTEGER,
-            file_size INTEGER,
-            local_file_path TEXT,
-            status TEXT CHECK(status IN ('new', 'unlistened', 'listened')) DEFAULT 'new',
-            downloaded BOOLEAN DEFAULT FALSE,
-            on_device BOOLEAN DEFAULT FALSE,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (podcast_id) REFERENCES podcasts (id) ON DELETE CASCADE
-        )
-    "#)
-    .execute(&self.pool)
-    .await?;
-    
-    Ok(())
+#### Rust Testing Configuration
+```toml
+# Add to Cargo.toml [dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3.8"
+mockall = "0.12"
+serial_test = "3.0"
+
+# For test coverage measurement
+[profile.test]
+debug = true
+```
+
+#### Test Coverage Measurement
+```bash
+# Install coverage tools
+cargo install cargo-tarpaulin
+
+# Measure coverage (target: 80%+)
+cargo tarpaulin --out Html --output-dir coverage
+```
+
+#### Frontend Testing Setup (FUTURE)
+```json
+{
+  "devDependencies": {
+    "vitest": "^1.0.0",
+    "jsdom": "^23.0.0",
+    "@testing-library/dom": "^9.0.0"
+  },
+  "scripts": {
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  }
 }
 ```
 
-### Adding New Tauri Commands (User Story Focused)
-1. **Identify user story** the command addresses
-2. **Define function in `commands.rs`** with user story context
-3. **Add to command handler in `lib.rs`**
-4. **Test from frontend** against acceptance criteria
-5. **Validate acceptance criteria** are met
+## 🚨 Emergency Protocols (UPDATED)
 
-### Creating Frontend Components (UI/UX from ProductOverview)
-Reference the detailed UI specifications in `ai_assisted_development/ProductOverview.md`:
-1. **Follow 3-pane layout** as specified in ai_assisted_development/ProductOverview.md
-2. **Implement email-app inspired navigation** (left sidebar, episode list, details)
-3. **Use specified interaction patterns** (Combined Inbox, podcast folders, etc.)
-4. **Test against UI acceptance criteria** from user stories
+### If Quality Gates Fail
+```bash
+# If clippy fails
+echo "❌ MANDATORY: Fix ALL clippy warnings before proceeding"
+cargo clippy --all-targets --all-features -- -D warnings
+# Fix every warning - no exceptions
 
-## 🚨 Emergency Protocols
+# If tests fail  
+echo "❌ MANDATORY: ALL tests must pass before proceeding"
+cargo test --all
+# Fix or disable failing tests - never ignore them
+
+# If formatting is inconsistent
+cargo fmt --all
+# Always run formatting - consistency is mandatory
+```
 
 ### If User Story Acceptance Criteria Can't Be Met
-1. **Document the limitation** in `ai_assisted_development/ISSUES.md` with user story reference
-2. **Implement closest possible approximation** that still provides user value
-3. **Mark as technical debt** for future improvement
-4. **Continue with other user stories** to maintain progress
-5. **Note impact on overall user experience**
+1. **Write test that reproduces the limitation**
+2. **Document in `ai_assisted_development/ISSUES.md`** with test reproduction
+3. **Implement closest possible approximation with tests**
+4. **Mark as technical debt with test coverage**
+5. **Continue with other user stories**
 
-### If Compilation Fails
+### If Application Won't Compile
 ```bash
-# Clean and rebuild
+# Clean rebuild protocol
 cargo clean
-npm install
-cargo check
+rm -rf target/
+cargo check --all-targets --all-features
 
-# Check for dependency issues
-cargo update
+# If still failing
+cargo update  # Update dependencies
+npm install   # Refresh node modules
+
+# Ultimate reset
+git status                    # Check for uncommitted changes
+git clean -fd                # Remove untracked files
+cargo check --all-targets    # Start fresh
 ```
 
-### If Tests Fail
-1. **Don't ignore failing tests**, especially user story validation tests
-2. **Fix the test or fix the code**
-3. **Document why** if test needs to be changed (user story evolution)
-4. **Add more tests** to prevent regression of user story functionality
+## 📝 Session Completion Checklist (UPDATED)
 
-### If Application Won't Start
-1. **Check `cargo check`** for compilation errors
-2. **Verify all dependencies installed**
-3. **Check for database connection issues** (affects many user stories)
-4. **Review logs** for error messages with user story context
+### Code Quality (ZERO TOLERANCE) ⚠️
+- [ ] ✅ cargo clippy passes with ZERO warnings
+- [ ] ✅ cargo test passes with 100% success rate  
+- [ ] ✅ cargo fmt applied and code consistently formatted
+- [ ] ✅ No compiler warnings of any kind
+- [ ] ✅ Security: cargo audit passes (if configured)
 
-## 📝 Session Completion Checklist
+### Testing Requirements (NEW MANDATORY) ⚠️
+- [ ] ✅ All new code has ≥80% test coverage
+- [ ] ✅ User story acceptance criteria have corresponding tests
+- [ ] ✅ Error handling paths tested comprehensively
+- [ ] ✅ Performance requirements validated with tests
+- [ ] ✅ Integration tests pass (frontend ↔ backend)
 
-Before ending a session:
+### User Story Validation ⚠️
+- [ ] ✅ Manual testing performed against ALL acceptance criteria
+- [ ] ✅ Automated tests validate acceptance criteria  
+- [ ] ✅ Performance requirements met (measured, not estimated)
+- [ ] ✅ Error scenarios tested and handled gracefully
+- [ ] ✅ User workflows function end-to-end
 
-### Code Quality
-- [ ] Code compiles without warnings
-- [ ] All new functions have error handling
-- [ ] Appropriate logging added **with user story context**
-- [ ] No obvious security issues
-- [ ] User story acceptance criteria addressed
+### Documentation & Progress Tracking ⚠️
+- [ ] ✅ Code comments updated with user story references
+- [ ] ✅ `ai_assisted_development/PROGRESS.md` updated with test metrics
+- [ ] ✅ `ai_assisted_development/SESSION_NOTES.md` updated with testing approach
+- [ ] ✅ `ai_assisted_development/ISSUES.md` updated with any test-discovered issues
+- [ ] ✅ `ai_assisted_development/QUALITY_METRICS.md` updated with coverage data
 
-### Testing
-- [ ] Manual testing performed **against acceptance criteria**
-- [ ] Unit tests added (when framework ready) **for user story validation**
-- [ ] Integration tested (frontend <-> backend) **for complete user workflows**
+### Handoff Preparation ⚠️
+- [ ] ✅ All quality gates pass for next agent
+- [ ] ✅ Test suite runs successfully for verification
+- [ ] ✅ Clear instructions for next session with testing priorities
+- [ ] ✅ Environment left in clean, compilable state
+- [ ] ✅ User story priorities identified with testing requirements
 
-### Documentation
-- [ ] Code comments updated **with user story references**
-- [ ] TODO items documented **with user story context**
-- [ ] Architecture decisions recorded **with user story impact**
+## 💡 Enhanced Development Tips
 
-### Progress Tracking
-- [ ] `ai_assisted_development/PROGRESS.md` updated **with user story completion status**
-- [ ] `ai_assisted_development/SESSION_NOTES.md` updated **with user story achievements**
-- [ ] `ai_assisted_development/ISSUES.md` updated **with any user story blockers**
-- [ ] `ai_assisted_development/QUALITY_METRICS.md` updated if applicable
+### Quality-First Mindset
+- **Red-Green-Refactor**: Write failing test → Make it pass → Improve code
+- **Zero Warnings**: Treat warnings as errors - fix immediately
+- **Test Edge Cases**: Error conditions, boundary values, network failures
+- **Performance Testing**: Measure against acceptance criteria, don't guess
 
-### Handoff Preparation
-- [ ] Clear instructions for next session **with user story priorities**
-- [ ] Priority user stories identified for next session
-- [ ] Blockers documented **with user story impact**
-- [ ] Environment left in clean state
+### Automated Quality Tools (SETUP IN NEXT SESSION)
+```bash
+# Set up pre-commit hooks
+echo '#!/bin/sh
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all
+cargo fmt --all -- --check
+' > .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
 
-## 🎯 Phase-Specific Focus Areas
+# Set up CI/CD quality pipeline (future)
+# - Automated testing on commit
+# - Code coverage reporting  
+# - Security vulnerability scanning
+# - Performance regression detection
+```
 
-### Phase 1 (Weeks 1-6): MVP Core
-**Priority**: Get basic user stories working (User Stories #1-11)
-- Focus on **User Stories #1-4** (podcast management) first
-- Implement **User Stories #5-7** (episode status management)
-- Create **User Stories #8-11** (USB device integration)
-- Test **core user workflows** frequently against acceptance criteria
+### Test-Driven User Story Development
+1. **Read acceptance criteria carefully**
+2. **Write test that validates criteria**
+3. **Watch test fail (Red)**
+4. **Implement minimum code to pass (Green)**  
+5. **Refactor and enhance (Refactor)**
+6. **Validate manually against user scenario**
+7. **Add comprehensive error/edge case tests**
 
-### Phase 2 (Weeks 7-10): Enhanced Features
-**Priority**: User experience and polish (User Stories #12-15, Future #16-18)
-- Add **User Story #12** (search functionality)
-- Implement **User Stories #13-15** (UI improvements)
-- Focus on **performance and usability**
-- Add **progress indicators** and batch operations
+## 🎯 Phase-Specific Quality Focus
 
-### Phase 3 (Weeks 11-13): Quality & Distribution
-**Priority**: Production readiness
-- Comprehensive testing **of all user stories**
-- Performance optimization **for user story scenarios**
-- Cross-platform compatibility **testing**
-- Documentation completion **including user manual**
+### Phase 1 (Weeks 1-6): Testing Foundation
+**Priority**: Establish bulletproof quality practices
+- **Testing Framework**: Set up comprehensive automated testing
+- **User Stories #1-11**: Implement with full test coverage
+- **Quality Gates**: Establish zero-tolerance policies
+- **Performance Baselines**: Measure and test all timing requirements
 
-## 💡 Tips for Success
+### Phase 2 (Weeks 7-10): Advanced Testing  
+**Priority**: Sophisticated testing and monitoring
+- **Integration Testing**: End-to-end user workflows
+- **Performance Testing**: Automated regression detection
+- **Security Testing**: Automated vulnerability scanning
+- **User Experience Testing**: Automated accessibility checks
 
-### User Story Focus
-- **Always ask "why"** - understand the user need behind each story
-- **Test with real usage scenarios** not just technical edge cases
-- **Consider user experience** over technical elegance
-- **Validate acceptance criteria** are realistic and achievable
+### Phase 3 (Weeks 11-13): Production Quality
+**Priority**: Production-ready quality assurance
+- **Load Testing**: Large dataset performance validation
+- **Cross-Platform Testing**: Automated multi-OS validation
+- **Security Audit**: Professional security assessment
+- **User Acceptance Testing**: Real user scenario validation
 
-### Time Management
-- **Estimate user stories** conservatively based on acceptance criteria complexity
-- **Focus on primary user stories** before nice-to-have features
-- **Don't over-engineer** - meet acceptance criteria, don't exceed them unnecessarily
-- **Leave time for user story validation** and testing
-
-### Problem Solving
-- **Read acceptance criteria carefully** before implementing
-- **Use user story context** for debugging and troubleshooting
-- **Test assumptions** against real user scenarios
-- **Ask "does this solve the user's problem?"** frequently
-
-### Quality Focus
-- **Working user stories** are better than perfect code
-- **User story completion** drives technical decisions
-- **Performance matters** for user experience (acceptance criteria timing)
-- **User feedback** (through acceptance criteria) drives priorities
-
-## 📚 Reference Resources
-
-### Product Context
-- **`ai_assisted_development/ProductOverview.md`** - Complete product vision and user stories
-- **User Story Acceptance Criteria** - Detailed requirements for each feature
-
-### Tauri Documentation
-- [Tauri Commands](https://tauri.app/develop/calling-rust/)
-- [Frontend Integration](https://tauri.app/develop/frontend/)
-
-### Rust Resources
-- [Rust Error Handling](https://doc.rust-lang.org/book/ch09-00-error-handling.html)
-- [SQLx Documentation](https://docs.rs/sqlx/)
-
-### Frontend Resources
-- [React TypeScript](https://react-typescript-cheatsheet.netlify.app/)
-- [Tauri API Reference](https://tauri.app/api/js/)
-
-## 🎯 User Story Quick Reference
-
-### Core MVP User Stories (Phase 1 Priority)
-1. **#1**: Add podcast subscription via RSS URL
-2. **#2**: View all episodes of specific podcast  
-3. **#3**: Download episodes from specific podcast
-4. **#4**: Remove podcast subscriptions
-5. **#5**: Mark episodes as "listened"
-6. **#6**: See episode status within each podcast
-7. **#7**: View all new episodes across podcasts (Combined Inbox)
-8. **#8**: See USB device storage capacity
-9. **#9**: Transfer episodes to USB device
-10. **#10**: Remove episodes from USB device
-11. **#11**: See which episodes are on USB device
-
-### UI/UX User Stories (Phase 2 Priority)
-12. **#12**: Search for episodes within podcast
-13. **#13**: See clear status indicators
-14. **#14**: Sort episodes by date within podcast
-15. **#15**: Filter episodes by status within podcast
-
-Remember: **Every line of code should serve a user story. Every feature should meet acceptance criteria. The user's needs drive all technical decisions.** 
+Remember: **Quality is not negotiable. Every line of code must meet these standards before proceeding.** 

@@ -5,23 +5,33 @@ This document tracks the quality metrics and standards for the PodPico project.
 ## Current Status
 - **Last Updated**: 2025-06-02
 - **Phase**: 1 (MVP Core)
-- **Overall Quality Score**: 90% (Excellent - 5 User Stories production ready with professional UI)
+- **Overall Quality Score**: 75% (Good foundation, requires immediate testing implementation)
+- **⚠️ CRITICAL GAP**: Zero automated test coverage (MANDATORY for next session)
 
 ## Code Quality Metrics
 
-### Compilation Status ✅ EXCELLENT
-- **Status**: CLEAN COMPILATION
+### Compilation Status ⚠️ REQUIRES IMMEDIATE ATTENTION
+- **Status**: CLEAN COMPILATION BUT POLICY VIOLATION
 - **Errors**: 0
-- **Warnings**: 6 (unused imports/variables in stub modules only)
+- **Warnings**: 6 (NO LONGER ACCEPTABLE - Zero tolerance policy now in effect)
 - **Last Check**: 2025-06-02
-- **Notes**: Only cosmetic warnings in unimplemented stub functions, all active code clean
+- **⚠️ MANDATORY ACTION**: ALL warnings must be resolved before next development session
+- **Policy**: `cargo clippy --all-targets --all-features -- -D warnings` must pass
 
-### Test Coverage ❌ NEEDS IMPROVEMENT
-- **Unit Tests**: 0% (no automated tests written yet)
-- **Integration Tests**: 0% (no automated test framework)
+### Test Coverage ❌ CRITICAL FAILURE - IMMEDIATE ACTION REQUIRED
+- **Unit Tests**: 0% (BLOCKS ALL FUTURE DEVELOPMENT)
+- **Integration Tests**: 0% (BLOCKS ALL FUTURE DEVELOPMENT)
 - **Manual Testing**: 100% (All completed user stories thoroughly validated)
-- **Target**: 80% automated test coverage
-- **Priority**: High (needed for regression prevention as features grow)
+- **⚠️ MANDATORY TARGET**: ≥80% automated test coverage for all new code
+- **Priority**: CRITICAL - Testing framework must be implemented in next session
+- **Policy**: No new features without corresponding automated tests
+
+### Linting Status ❌ FAILING NEW STANDARDS
+- **Clippy Warnings**: 6 warnings (ZERO TOLERANCE POLICY VIOLATION)
+- **Code Formatting**: Not consistently enforced (cargo fmt required)
+- **Import Cleanup**: Unused imports must be removed immediately
+- **⚠️ MANDATORY**: `cargo clippy --all-targets --all-features -- -D warnings` must pass
+- **⚠️ MANDATORY**: `cargo fmt --all` must be applied before any commits
 
 ### Code Documentation ✅ EXCELLENT  
 - **User Story Context**: 100% (all code linked to specific user stories)
@@ -70,11 +80,37 @@ This document tracks the quality metrics and standards for the PodPico project.
 - **User Data**: ✅ Local only (no external data transmission)
 - **Sensitive Information**: ✅ None stored (only public RSS data)
 
-### Dependency Security ✅ GOOD
-- **Dependency Audit**: Manual review completed (should automate)
+### Dependency Security ⚠️ NEEDS AUTOMATION
+- **Dependency Audit**: Manual review completed (MUST automate with cargo audit)
 - **Known Vulnerabilities**: None identified in current dependencies
-- **Update Strategy**: Manual (should implement automated vulnerability scanning)
+- **Update Strategy**: Manual (MUST implement automated vulnerability scanning)
 - **Supply Chain**: Rust/npm ecosystems (generally secure, established packages)
+- **⚠️ MANDATORY**: Set up automated security scanning in next session
+
+## Testing & Quality Assurance Metrics
+
+### Automated Testing Framework ❌ CRITICAL MISSING
+- **Testing Framework Status**: NOT IMPLEMENTED (BLOCKS DEVELOPMENT)
+- **Test Runner**: cargo test (must be configured)
+- **Mocking Capability**: Not implemented (mockall required)
+- **Test Coverage Measurement**: Not implemented (cargo-tarpaulin required)
+- **Performance Testing**: Manual only (must be automated)
+- **⚠️ CRITICAL**: Testing framework setup is MANDATORY for next session
+
+### Test Coverage by Component ❌ ALL MISSING
+- **Database Layer**: 0% coverage (target: 90%)
+- **RSS Processing**: 0% coverage (target: 85%)
+- **Error Handling**: 0% coverage (target: 95%)
+- **User Interface**: 0% coverage (target: 70%)
+- **API Commands**: 0% coverage (target: 90%)
+- **⚠️ MANDATORY**: All new code must achieve ≥80% test coverage
+
+### Quality Gate Compliance ❌ FAILING NEW STANDARDS
+- **Pre-Development Gates**: NOT IMPLEMENTED
+- **Continuous Quality Checks**: NOT IMPLEMENTED  
+- **Pre-Commit Gates**: NOT IMPLEMENTED
+- **Session Completion Gates**: PARTIALLY IMPLEMENTED
+- **⚠️ MANDATORY**: All quality gates must be implemented and passing
 
 ## User Experience Metrics
 
@@ -85,28 +121,33 @@ This document tracks the quality metrics and standards for the PodPico project.
 - **Clear Error Messages**: ✅ Specific, actionable error messages for all failure modes
 - **Podcast Metadata**: ✅ Complete extraction (title, description, artwork)
 - **Episode Storage**: ✅ All episodes saved with comprehensive metadata
+- **⚠️ MISSING**: Automated tests for acceptance criteria
 
 #### User Story #2: View all episodes of specific podcast  
 - **Episode Display Speed**: ✅ Within 3 seconds (200-800ms actual)
 - **Episode Metadata**: ✅ Complete (title, date, duration, status)
 - **Podcast-Specific Lists**: ✅ Proper filtering and organization
 - **Episode Count Display**: ✅ Accurate counts with real-time updates
+- **⚠️ MISSING**: Automated tests for acceptance criteria
 
 #### User Story #5: Mark episodes as "listened"
 - **Status Persistence**: ✅ Changes survive app restarts
 - **UI Responsiveness**: ✅ Immediate feedback with optimistic updates
 - **Multiple Controls**: ✅ Dropdown and button interfaces
 - **Status Validation**: ✅ Proper validation of status values
+- **⚠️ MISSING**: Automated tests for acceptance criteria
 
 #### User Story #6: See episode status within each podcast
 - **Visual Indicators**: ✅ Clear, consistent icons (🔴 New, 🔵 Unlistened, ✅ Listened)
 - **Cross-View Consistency**: ✅ Same status representation in all views
 - **Real-time Updates**: ✅ Immediate icon updates on status changes
+- **⚠️ MISSING**: Automated tests for acceptance criteria
 
 #### User Story #7: View all new episodes across podcasts (Combined Inbox)
 - **Cross-Podcast Aggregation**: ✅ All new episodes from all subscriptions
 - **Episode Count Indicators**: ✅ Accurate new episode counts per podcast
 - **Source Attribution**: ✅ Podcast name clearly shown for each episode
+- **⚠️ MISSING**: Automated tests for acceptance criteria
 
 ### Interface Usability ✅ EXCELLENT
 - **3-Pane Layout**: ✅ Email-app inspired design matching ProductOverview.md
@@ -126,133 +167,151 @@ This document tracks the quality metrics and standards for the PodPico project.
 
 ## Technical Debt
 
+### CRITICAL Priority Issues (BLOCKS DEVELOPMENT)
+- **Testing Framework**: No automated tests (MANDATORY for next session)
+- **Linting Violations**: 6 clippy warnings (ZERO TOLERANCE POLICY)
+- **Quality Gates**: Not implemented (MANDATORY for next session)
+- **Test Coverage**: 0% coverage (MANDATORY ≥80% for new code)
+
 ### High Priority Issues
-- **Testing Framework**: No automated tests (blocks confidence in refactoring)
+- **Automated Quality Pipeline**: No CI/CD quality enforcement
+- **Security Scanning**: Manual only (should be automated)
+- **Performance Regression Testing**: Manual only (should be automated)
 - **Accessibility Audit**: Needs comprehensive accessibility review
-- **Performance Monitoring**: Manual testing only (should implement automated monitoring)
 
 ### Medium Priority Issues
-- **Unused Import Warnings**: 6 warnings in stub modules (cosmetic only)
 - **Error Recovery**: No retry mechanisms for network failures
 - **State Management**: Could benefit from more sophisticated state management for complex scenarios
-
-### Low Priority Issues
-- **Code Style**: Consistent but could use automated formatting (clippy + prettier)
-- **Documentation**: Could add more inline code examples
 - **Logging**: Could add structured logging for better debugging capabilities
 
-## Quality Gates
+### Low Priority Issues (RESOLVED UNDER NEW STANDARDS)
+- ~~**Code Style**: Consistent but could use automated formatting~~ → NOW MANDATORY
+- ~~**Unused Import Warnings**: 6 warnings in stub modules~~ → NOW ZERO TOLERANCE
+- **Documentation**: Could add more inline code examples
 
-### Pre-Commit Requirements ✅ MET
-- [x] Code compiles without errors
-- [x] All user story acceptance criteria met and validated
-- [x] Manual testing completed for all implemented features
-- [x] Error handling comprehensive and user-friendly
-- [x] User story context documented in code
-- [x] Performance requirements met
+## NEW MANDATORY Quality Gates
 
-### Pre-Release Requirements (Future)
-- [ ] 80% automated test coverage
-- [ ] Performance benchmarks automated and passing
-- [ ] Security audit completed
+### Pre-Session Quality Gates ⚠️ MANDATORY
+- [ ] ❌ `cargo clippy --all-targets --all-features -- -D warnings` (CURRENTLY FAILING)
+- [ ] ❌ `cargo test --all` (NO TESTS EXIST)
+- [ ] ❌ `cargo fmt --all -- --check` (NOT ENFORCED)
+- [ ] ❌ All existing tests pass at 100% (NO TESTS EXIST)
+- [ ] ❌ Test coverage ≥80% for existing code (NO COVERAGE)
+
+### Continuous Quality Gates ⚠️ MANDATORY
+- [ ] ❌ Zero clippy warnings after each change (NOT IMPLEMENTED)
+- [ ] ❌ All tests pass after each change (NO TESTS)
+- [ ] ❌ Code formatting consistent after each change (NOT ENFORCED)
+- [ ] ❌ Performance requirements validated (MANUAL ONLY)
+
+### Session Completion Gates ⚠️ MANDATORY
+- [ ] ❌ ALL clippy warnings resolved (6 OUTSTANDING)
+- [ ] ❌ ALL tests pass (NO TESTS EXIST)
+- [ ] ❌ Test coverage ≥80% for new code (NO FRAMEWORK)
+- [ ] ❌ Manual acceptance criteria validation completed (OK)
+- [ ] ❌ No security vulnerabilities introduced (NO SCANNING)
+- [ ] ✅ Performance requirements met (GOOD)
+- [ ] ✅ Error handling comprehensive (GOOD)
+- [ ] ✅ User story context documented (GOOD)
+
+### Pre-Release Gates (Future)
+- [ ] 90% automated test coverage (currently 0%)
+- [ ] Performance benchmarks automated and passing (manual only)
+- [ ] Security audit completed (manual only)
 - [ ] Accessibility compliance verified (WCAG 2.1 AA)
 - [ ] Cross-platform testing completed
 
-## Improvement Recommendations
+## URGENT Action Items for Next Session
 
-### Immediate (Next Session)
-1. **Implement User Story #3** - Episode download functionality
-2. **Add Testing Framework** - Unit and integration tests for regression prevention  
-3. **Integrate User Story #4** - Remove podcast functionality in UI
+### CRITICAL - BLOCKS ALL DEVELOPMENT ⚠️
+1. **Resolve ALL Clippy Warnings** (6 outstanding)
+   - Run: `cargo clippy --all-targets --all-features -- -D warnings`
+   - Fix every single warning before proceeding
+   - Set up pre-commit hook to prevent future warnings
 
-### Short Term (Next 2-3 Sessions)
-1. **Complete Core User Stories** - User Stories #8-11 (USB device integration)
-2. **Automated Testing Pipeline** - CI/CD with comprehensive test coverage
-3. **Performance Monitoring** - Automated performance regression detection
+2. **Implement Testing Framework** (0% coverage currently)
+   - Add testing dependencies to Cargo.toml
+   - Create test modules for all existing functionality
+   - Achieve ≥80% test coverage for User Stories #1, #2, #5, #6, #7
+   - Set up cargo-tarpaulin for coverage measurement
 
-### Long Term (Phase 2-3)
-1. **Professional Testing Suite** - Comprehensive automated testing
-2. **Security Audit** - Professional security review and penetration testing
-3. **Accessibility Compliance** - WCAG 2.1 AA compliance with automated testing
-4. **Performance Optimization** - Advanced caching, lazy loading, virtualization
+3. **Set Up Quality Gates** (currently missing)
+   - Implement pre-session quality verification
+   - Set up continuous quality checking workflow
+   - Create session completion checklist automation
 
-## Quality Trends
+### HIGH PRIORITY ⚠️
+4. **Automated Security Scanning**
+   - Install and configure cargo audit
+   - Set up dependency vulnerability monitoring
+   - Create security issue tracking workflow
 
-### Session 1 → Session 2 Improvements
-- **Functionality**: 35% → 65% (4 additional user stories completed)
-- **User Experience**: 60% → 90% (professional UI with email-app design)
-- **Performance**: 85% → 95% (episode loading well under requirements)
-- **Code Organization**: 90% → 95% (enhanced component architecture)
-- **Documentation**: 85% → 95% (comprehensive session notes and testing results)
+5. **Performance Test Automation**
+   - Create automated performance regression tests
+   - Set up benchmarking for User Story acceptance criteria
+   - Monitor memory usage and startup time
 
-### Areas of Consistent Excellence
-- **User Story Focus**: All code directly serves user needs with acceptance criteria validation
-- **Error Handling**: Comprehensive and user-friendly throughout all features
-- **Database Design**: Robust schema supporting current and future features
-- **Performance**: Consistently exceeds user story acceptance criteria
-- **Code Documentation**: Excellent linkage between code and user story context
+## Quality Assurance Process (UPDATED)
 
-### Areas Showing Strong Improvement
-- **Frontend Architecture**: Evolved from basic test interface to professional application
-- **User Experience**: Now matches modern application expectations
-- **Status Management**: Sophisticated optimistic updates with backend persistence
-- **Visual Design**: Professional design system with consistent theming
+### NEW MANDATORY Process
+1. **Pre-Session Verification**: ALL quality gates must pass before development
+2. **Test-Driven Development**: Write failing tests BEFORE implementing features  
+3. **Continuous Quality**: Check quality after EVERY significant change
+4. **Zero-Tolerance Linting**: Fix ALL warnings immediately
+5. **Automated Coverage**: Measure and enforce ≥80% test coverage
 
-### Areas Still Needing Attention
-- **Testing**: Still 0% automated coverage (critical gap)
-- **Accessibility**: Needs formal assessment and enhancement
-- **Performance Monitoring**: Manual testing should be supplemented with automated monitoring
+### Current Process (INSUFFICIENT)
+1. ~~**User Story Validation**: Comprehensive manual testing~~ → MUST ADD AUTOMATED TESTS
+2. ~~**Code Review**: Self-review with user story context~~ → MUST ADD LINTING
+3. ~~**Compilation Check**: Zero tolerance for compilation errors~~ → MUST ADD WARNING CHECK
+4. ~~**Performance Validation**: Manual timing**~~ → MUST ADD AUTOMATED BENCHMARKS
+5. ~~**Cross-Platform Testing**: Manual testing**~~ → MUST ADD AUTOMATED TESTING
 
-## Quality Assurance Process
+## Metrics Dashboard (UPDATED)
 
-### Current Process
-1. **User Story Validation**: Comprehensive manual testing against acceptance criteria
-2. **Code Review**: Self-review with user story context validation
-3. **Compilation Check**: Zero tolerance for compilation errors
-4. **Performance Validation**: Manual timing of critical operations
-5. **Cross-Platform Testing**: Manual testing in light/dark themes
+### Current Sprint Metrics (Session 2) - FAILING NEW STANDARDS
+- **User Stories Completed**: 5/15 (33.3%) - Strong progress ✅
+- **Code Coverage**: 0% automated, 100% manual ❌ CRITICAL FAILURE
+- **Linting Compliance**: 85% (6 warnings outstanding) ❌ POLICY VIOLATION  
+- **Performance Score**: 95% (all targets exceeded) ✅
+- **Security Score**: 70% (manual only, needs automation) ⚠️
+- **User Experience Score**: 90% (professional application quality) ✅
+- **Accessibility Score**: 60% (foundation good, needs assessment) ⚠️
 
-### Recommended Process (Next Phase)
-1. **Automated Testing**: Unit and integration tests for all user stories
-2. **Continuous Integration**: Automated build and test pipeline
-3. **Performance Benchmarking**: Automated performance regression detection
-4. **Security Scanning**: Automated vulnerability detection in dependencies
-5. **Accessibility Testing**: Automated accessibility compliance checking
+### Quality Score Breakdown (UPDATED)
+- **Functionality**: 95% (5 user stories working perfectly) ✅
+- **Reliability**: 45% (excellent error handling, BUT ZERO TEST COVERAGE) ❌
+- **Performance**: 95% (exceeds all requirements consistently) ✅
+- **Security**: 70% (strong practices, needs automated scanning) ⚠️
+- **Maintainability**: 60% (good architecture, BUT NO TESTS for refactoring safety) ❌
+- **Usability**: 90% (professional UI/UX, needs accessibility audit) ✅
 
-## Metrics Dashboard
+### Session 2 Achievements vs NEW STANDARDS
+- **User Stories Delivered**: 4 additional user stories (133% increase) ✅
+- **UI Quality**: Professional email-app inspired design implemented ✅
+- **Performance**: Episode loading 5x faster than requirement ✅
+- **Code Quality**: Maintained standards BUT FAILED new testing requirements ❌
+- **Documentation**: Comprehensive session notes ✅
+- **Testing**: ZERO automated coverage (CRITICAL FAILURE) ❌
 
-### Current Sprint Metrics (Session 2)
-- **User Stories Completed**: 5/15 (33.3%) - Strong progress
-- **Code Coverage**: 0% automated, 100% manual (need automated framework)
-- **Performance Score**: 95% (all targets exceeded)
-- **Security Score**: 85% (good practices, needs formal audit)
-- **User Experience Score**: 90% (professional application quality)
-- **Accessibility Score**: 60% (foundation good, needs assessment)
+### Key Performance Indicators (UPDATED)
+- **User Story Velocity**: 4 user stories per session ✅
+- **Acceptance Criteria Success Rate**: 100% manual, 0% automated ❌
+- **Performance Compliance**: 100% (all requirements exceeded) ✅
+- **Code Quality**: 60% (good practices, FAILING linting/testing standards) ❌
+- **Test Coverage**: 0% (CRITICAL FAILURE) ❌
+- **Quality Gate Compliance**: 30% (FAILING most new requirements) ❌
 
-### Quality Score Breakdown
-- **Functionality**: 95% (5 user stories working perfectly)
-- **Reliability**: 85% (excellent error handling, needs automated testing)
-- **Performance**: 95% (exceeds all requirements consistently)
-- **Security**: 85% (strong practices, needs professional audit)
-- **Maintainability**: 95% (excellent architecture and documentation)
-- **Usability**: 90% (professional UI/UX, needs accessibility audit)
+## Conclusion (UPDATED)
 
-### Session 2 Achievements
-- **User Stories Delivered**: 4 additional user stories (133% increase)
-- **UI Quality**: Professional email-app inspired design implemented
-- **Performance**: Episode loading 5x faster than requirement (200-800ms vs 3-second limit)
-- **Code Quality**: Maintained excellent standards while significantly expanding functionality
-- **Documentation**: Comprehensive testing results and session notes
+**CRITICAL STATUS**: The project has excellent functional quality for implemented features, but FAILS the new mandatory quality standards that are essential for sustainable development.
 
-### Key Performance Indicators
-- **User Story Velocity**: 4 user stories per session (excellent pace)
-- **Acceptance Criteria Success Rate**: 100% (all criteria met)
-- **Performance Compliance**: 100% (all requirements exceeded)
-- **Code Quality**: 95% (excellent with room for testing improvement)
-- **User Experience**: 90% (professional quality application)
+**IMMEDIATE ACTIONS REQUIRED**:
+1. ❌ **CRITICAL**: Resolve all 6 clippy warnings (BLOCKS development)
+2. ❌ **CRITICAL**: Implement comprehensive testing framework (BLOCKS development)  
+3. ❌ **CRITICAL**: Set up quality gates and enforcement (BLOCKS development)
+4. ❌ **CRITICAL**: Achieve ≥80% test coverage for existing user stories
 
-## Conclusion
+**DEVELOPMENT BLOCKED**: No new features can be developed until testing framework and quality gates are implemented.
 
-The project demonstrates excellent quality in implemented features, with User Story #1 being production-ready. The main areas for improvement are automated testing and frontend enhancement. The foundation is solid for rapid development of remaining user stories.
-
-**Overall Assessment**: High quality implementation with strong foundation for future development. Focus on testing and UI enhancement for next session. 
+**Overall Assessment**: Strong functional foundation with CRITICAL quality infrastructure gaps that must be resolved immediately to prevent technical debt accumulation and ensure sustainable development velocity. 
