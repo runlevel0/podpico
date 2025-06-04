@@ -23,7 +23,12 @@ impl FileManager {
         Ok(())
     }
 
-    pub async fn download_episode(&self, episode_url: &str, episode_id: i64, podcast_id: i64) -> Result<String, PodPicoError> {
+    pub async fn download_episode(
+        &self,
+        episode_url: &str,
+        episode_id: i64,
+        _podcast_id: i64,
+    ) -> Result<String, PodPicoError> {
         log::info!("Downloading episode {} from {}", episode_id, episode_url);
         // TODO: Implement episode download with progress tracking
         Err(PodPicoError::Generic("Not implemented yet".to_string()))
@@ -35,7 +40,11 @@ impl FileManager {
             .join(format!("{}.mp3", episode_id))
     }
 
-    pub async fn delete_episode(&self, podcast_id: i64, episode_id: i64) -> Result<(), PodPicoError> {
+    pub async fn delete_episode(
+        &self,
+        podcast_id: i64,
+        episode_id: i64,
+    ) -> Result<(), PodPicoError> {
         let file_path = self.get_episode_path(podcast_id, episode_id);
         log::info!("Deleting episode file: {:?}", file_path);
         // TODO: Implement file deletion
@@ -50,4 +59,4 @@ impl FileManager {
         log::info!("Getting download progress for episode: {}", episode_id);
         0.0
     }
-} 
+}

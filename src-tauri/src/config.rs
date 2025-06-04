@@ -1,8 +1,8 @@
 // Configuration management module for PodPico
 // Handles loading and saving application configuration
 
-use crate::error::PodPicoError;
 use crate::commands::AppConfig;
+use crate::error::PodPicoError;
 use std::path::PathBuf;
 use tokio::fs;
 
@@ -29,7 +29,7 @@ impl ConfigManager {
         })
     }
 
-    pub async fn save_config(&self, config: &AppConfig) -> Result<(), PodPicoError> {
+    pub async fn save_config(&self, _config: &AppConfig) -> Result<(), PodPicoError> {
         log::info!("Saving configuration to: {:?}", self.config_path);
         // TODO: Save configuration to file
         Err(PodPicoError::Generic("Not implemented yet".to_string()))
@@ -43,4 +43,4 @@ impl ConfigManager {
         }
         Ok(())
     }
-} 
+}

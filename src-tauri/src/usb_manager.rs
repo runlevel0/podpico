@@ -1,18 +1,24 @@
 // USB device management module for PodPico
 // Handles USB device detection, mounting, and file operations
 
-use crate::error::PodPicoError;
 use crate::commands::UsbDevice;
+use crate::error::PodPicoError;
 use sysinfo::System;
 
 pub struct UsbManager {
-    system: System,
+    _system: System, // Prefixed with underscore as it's not used yet in stub implementation
+}
+
+impl Default for UsbManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl UsbManager {
     pub fn new() -> Self {
         Self {
-            system: System::new_all(),
+            _system: System::new_all(),
         }
     }
 
@@ -29,7 +35,12 @@ impl UsbManager {
         Err(PodPicoError::UsbDeviceNotFound(device_path.to_string()))
     }
 
-    pub async fn transfer_file(&self, source_path: &str, device_path: &str, filename: &str) -> Result<(), PodPicoError> {
+    pub async fn transfer_file(
+        &self,
+        _source_path: &str,
+        device_path: &str,
+        filename: &str,
+    ) -> Result<(), PodPicoError> {
         log::info!("Transferring file {} to device {}", filename, device_path);
         // TODO: Implement file transfer to USB device
         Err(PodPicoError::Generic("Not implemented yet".to_string()))
@@ -40,4 +51,4 @@ impl UsbManager {
         // TODO: Implement file removal from USB device
         Err(PodPicoError::Generic("Not implemented yet".to_string()))
     }
-} 
+}

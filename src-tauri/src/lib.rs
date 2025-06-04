@@ -6,13 +6,13 @@
 
 // Module declarations
 pub mod commands;
+pub mod config;
 pub mod database;
+pub mod episode_manager;
+pub mod error;
+pub mod file_manager;
 pub mod rss_manager;
 pub mod usb_manager;
-pub mod file_manager;
-pub mod episode_manager;
-pub mod config;
-pub mod error;
 
 // Re-exports
 pub use commands::*;
@@ -27,10 +27,10 @@ use std::fs;
 pub fn run() {
     // Initialize logging
     env_logger::init();
-    
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .setup(|app| {
+        .setup(|_app| {
             // Initialize database and managers
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = initialize_app().await {
@@ -67,36 +67,36 @@ pub fn run() {
 
 async fn initialize_app() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     log::info!("Initializing PodPico application...");
-    
+
     // Create data directory in the current working directory for now
     let data_dir = std::path::PathBuf::from("./data");
     fs::create_dir_all(&data_dir)?;
     log::info!("Created data directory: {}", data_dir.display());
-    
+
     // Initialize database - create the file first to ensure permissions work
     let db_path = data_dir.join("podcasts.db");
-    
+
     // Create the database file if it doesn't exist
     if !db_path.exists() {
         std::fs::File::create(&db_path)?;
         log::info!("Created new database file: {}", db_path.display());
     }
-    
+
     let database_url = format!("sqlite:{}", db_path.display());
     log::info!("Connecting to database: {}", database_url);
-    
+
     let db = DatabaseManager::new(&database_url).await?;
-    
+
     // Create database tables (User Stories #1-11 foundation)
     log::info!("Creating database schema for podcast management...");
     db.initialize().await?;
-    
+
     // Initialize RSS manager
     let rss_manager = RssManager::new();
-    
+
     // Initialize managers globally
     commands::initialize_managers(db, rss_manager).await;
-    
+
     log::info!("Database and RSS manager initialized successfully");
     Ok(())
 }
