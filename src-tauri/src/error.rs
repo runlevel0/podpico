@@ -19,6 +19,9 @@ pub enum PodPicoError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("IO error: {0}")]
+    IoError(String),
+
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 

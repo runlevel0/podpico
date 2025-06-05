@@ -262,15 +262,66 @@ pub async fn download_episode(episode_id: i64) -> Result<(), String> {
         "Starting download for episode: {} (User Story #3)",
         episode_id
     );
-    // TODO: Implement episode download
-    Err("Not implemented yet".to_string())
+
+    // Get managers
+    let db_lock = DATABASE.lock().await;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+
+    // Get episode information
+    let episodes = db.get_episodes(None).await
+        .map_err(|e| format!("Failed to get episode: {}", e))?;
+    
+    let episode = episodes.iter()
+        .find(|e| e.id == episode_id)
+        .ok_or("Episode not found")?;
+
+    // User Story #3 Acceptance Criteria: Check if already downloaded
+    if episode.downloaded {
+        log::info!("Episode {} already downloaded", episode_id);
+        return Ok(());
+    }
+
+    // Initialize FileManager for this download
+    // TODO: Get download directory from config
+    let file_manager = crate::file_manager::FileManager::new("./episodes");
+    file_manager.initialize().await
+        .map_err(|e| format!("Failed to initialize file manager: {}", e))?;
+
+    // User Story #3 Acceptance Criteria: Download with progress tracking
+    let result = file_manager.download_episode(&episode.episode_url, episode_id, episode.podcast_id).await;
+
+    match result {
+        Ok(file_path) => {
+            log::info!("Successfully downloaded episode {} to {}", episode_id, file_path);
+            
+            // Update database to mark episode as downloaded
+            db.update_episode_downloaded_status(episode_id, true, Some(&file_path)).await
+                .map_err(|e| format!("Failed to update episode status: {}", e))?;
+            
+            Ok(())
+        }
+        Err(e) => {
+            log::error!("Failed to download episode {}: {}", episode_id, e);
+            Err(format!("Download failed: {}", e))
+        }
+    }
 }
 
 #[tauri::command]
 pub async fn get_download_progress(episode_id: i64) -> Result<f64, String> {
     log::info!("Getting download progress for episode: {}", episode_id);
-    // TODO: Implement download progress tracking
-    Ok(0.0) // Return 0% progress for now
+    
+    // User Story #3 Acceptance Criteria: Return download progress percentage
+    // TODO: Get from FileManager singleton when properly implemented
+    // For now, return a basic implementation
+    
+    let file_manager = crate::file_manager::FileManager::new("./episodes");
+    
+    if let Some(progress) = file_manager.get_download_progress(episode_id).await {
+        Ok(progress.percentage)
+    } else {
+        Ok(0.0) // No download in progress
+    }
 }
 
 // USB device management commands
@@ -775,5 +826,71 @@ mod tests {
         assert_eq!(episode.podcast_name, "Complete Workflow Test");
 
         mock.assert();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_3_download_progress_tracking() {
+        // User Story #3 Acceptance Criteria: Download progress percentage tracking
+        let (_db, _rss) = setup_test_environment().await;
+
+        // Test that progress tracking works for non-existent episode
+        let progress = get_download_progress(999).await; // Non-existent episode
+        assert!(progress.is_ok(), "Should return 0% for non-existent episode");
+        assert_eq!(progress.unwrap(), 0.0, "Should return 0% progress");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_3_download_already_downloaded() {
+        // Test downloading an already downloaded episode
+        let (_db, _rss) = setup_test_environment().await;
+        let server = MockServer::start();
+
+        let feed_mock = server.mock(|when, then| {
+            when.method(GET).path("/feed.xml");
+            then.status(200).body(format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+                <rss version="2.0">
+                <channel>
+                    <title>Already Downloaded Test</title>
+                    <description>Testing already downloaded episodes</description>
+                    <item>
+                        <title>Already Downloaded Episode</title>
+                        <enclosure url="{}/already.mp3" type="audio/mpeg" length="1000000"/>
+                        <pubDate>Mon, 01 Jan 2023 00:00:00 +0000</pubDate>
+                    </item>
+                </channel>
+                </rss>"#, server.base_url()));
+        });
+
+        // Add podcast and get episode
+        let podcast = add_podcast(server.url("/feed.xml")).await.unwrap();
+        let episodes = get_episodes(Some(podcast.id)).await.unwrap();
+        let episode_id = episodes[0].id;
+
+        // Mark episode as already downloaded manually in database
+        let db_lock = DATABASE.lock().await;
+        let db = db_lock.as_ref().unwrap();
+        db.update_episode_downloaded_status(episode_id, true, Some("/fake/path.mp3")).await.unwrap();
+        drop(db_lock);
+
+        // Try to download again - should succeed immediately without network call
+        let result = download_episode(episode_id).await;
+        assert!(result.is_ok(), "Should succeed for already downloaded episode");
+
+        feed_mock.assert();
+        // Note: No download mock needed since episode is already marked as downloaded
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_3_download_episode_basic() {
+        // User Story #3: Test basic download episode functionality
+        let (_db, _rss) = setup_test_environment().await;
+
+        // Simple test: Try to download an episode that doesn't exist in database
+        let result = download_episode(99999).await; // Non-existent episode ID
+        assert!(result.is_err(), "Should fail for non-existent episode");
+        assert!(result.unwrap_err().contains("Episode not found"), "Should indicate episode not found");
     }
 }

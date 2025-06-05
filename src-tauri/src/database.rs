@@ -300,6 +300,34 @@ impl DatabaseManager {
         Ok(())
     }
 
+    pub async fn update_episode_downloaded_status(
+        &self,
+        episode_id: i64,
+        downloaded: bool,
+        local_file_path: Option<&str>,
+    ) -> Result<(), PodPicoError> {
+        log::info!(
+            "Updating episode {} downloaded status to: {} (User Story #3)",
+            episode_id,
+            downloaded
+        );
+
+        sqlx::query(
+            r#"
+            UPDATE episodes 
+            SET downloaded = ?, local_file_path = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        "#,
+        )
+        .bind(downloaded)
+        .bind(local_file_path)
+        .bind(episode_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn add_episode(
         &self,
