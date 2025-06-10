@@ -268,10 +268,13 @@ pub async fn download_episode(episode_id: i64) -> Result<(), String> {
     let db = db_lock.as_ref().ok_or("Database not initialized")?;
 
     // Get episode information
-    let episodes = db.get_episodes(None).await
+    let episodes = db
+        .get_episodes(None)
+        .await
         .map_err(|e| format!("Failed to get episode: {}", e))?;
-    
-    let episode = episodes.iter()
+
+    let episode = episodes
+        .iter()
         .find(|e| e.id == episode_id)
         .ok_or("Episode not found")?;
 
@@ -284,20 +287,29 @@ pub async fn download_episode(episode_id: i64) -> Result<(), String> {
     // Initialize FileManager for this download
     // TODO: Get download directory from config
     let file_manager = crate::file_manager::FileManager::new("./episodes");
-    file_manager.initialize().await
+    file_manager
+        .initialize()
+        .await
         .map_err(|e| format!("Failed to initialize file manager: {}", e))?;
 
     // User Story #3 Acceptance Criteria: Download with progress tracking
-    let result = file_manager.download_episode(&episode.episode_url, episode_id, episode.podcast_id).await;
+    let result = file_manager
+        .download_episode(&episode.episode_url, episode_id, episode.podcast_id)
+        .await;
 
     match result {
         Ok(file_path) => {
-            log::info!("Successfully downloaded episode {} to {}", episode_id, file_path);
-            
+            log::info!(
+                "Successfully downloaded episode {} to {}",
+                episode_id,
+                file_path
+            );
+
             // Update database to mark episode as downloaded
-            db.update_episode_downloaded_status(episode_id, true, Some(&file_path)).await
+            db.update_episode_downloaded_status(episode_id, true, Some(&file_path))
+                .await
                 .map_err(|e| format!("Failed to update episode status: {}", e))?;
-            
+
             Ok(())
         }
         Err(e) => {
@@ -310,13 +322,13 @@ pub async fn download_episode(episode_id: i64) -> Result<(), String> {
 #[tauri::command]
 pub async fn get_download_progress(episode_id: i64) -> Result<f64, String> {
     log::info!("Getting download progress for episode: {}", episode_id);
-    
+
     // User Story #3 Acceptance Criteria: Return download progress percentage
     // TODO: Get from FileManager singleton when properly implemented
     // For now, return a basic implementation
-    
+
     let file_manager = crate::file_manager::FileManager::new("./episodes");
-    
+
     if let Some(progress) = file_manager.get_download_progress(episode_id).await {
         Ok(progress.percentage)
     } else {
@@ -328,8 +340,10 @@ pub async fn get_download_progress(episode_id: i64) -> Result<f64, String> {
 #[tauri::command]
 pub async fn get_usb_devices() -> Result<Vec<UsbDevice>, String> {
     log::info!("Getting USB devices (User Story #8)");
-    // TODO: Implement USB device detection
-    Ok(vec![]) // Return empty list for now
+    
+    let mut usb_manager = crate::usb_manager::UsbManager::new();
+    usb_manager.detect_devices()
+        .map_err(|e| format!("Failed to detect USB devices: {}", e))
 }
 
 #[tauri::command]
@@ -836,7 +850,10 @@ mod tests {
 
         // Test that progress tracking works for non-existent episode
         let progress = get_download_progress(999).await; // Non-existent episode
-        assert!(progress.is_ok(), "Should return 0% for non-existent episode");
+        assert!(
+            progress.is_ok(),
+            "Should return 0% for non-existent episode"
+        );
         assert_eq!(progress.unwrap(), 0.0, "Should return 0% progress");
     }
 
@@ -849,7 +866,8 @@ mod tests {
 
         let feed_mock = server.mock(|when, then| {
             when.method(GET).path("/feed.xml");
-            then.status(200).body(format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+            then.status(200).body(format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
                 <rss version="2.0">
                 <channel>
                     <title>Already Downloaded Test</title>
@@ -860,7 +878,9 @@ mod tests {
                         <pubDate>Mon, 01 Jan 2023 00:00:00 +0000</pubDate>
                     </item>
                 </channel>
-                </rss>"#, server.base_url()));
+                </rss>"#,
+                server.base_url()
+            ));
         });
 
         // Add podcast and get episode
@@ -871,12 +891,17 @@ mod tests {
         // Mark episode as already downloaded manually in database
         let db_lock = DATABASE.lock().await;
         let db = db_lock.as_ref().unwrap();
-        db.update_episode_downloaded_status(episode_id, true, Some("/fake/path.mp3")).await.unwrap();
+        db.update_episode_downloaded_status(episode_id, true, Some("/fake/path.mp3"))
+            .await
+            .unwrap();
         drop(db_lock);
 
         // Try to download again - should succeed immediately without network call
         let result = download_episode(episode_id).await;
-        assert!(result.is_ok(), "Should succeed for already downloaded episode");
+        assert!(
+            result.is_ok(),
+            "Should succeed for already downloaded episode"
+        );
 
         feed_mock.assert();
         // Note: No download mock needed since episode is already marked as downloaded
@@ -885,12 +910,155 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_user_story_3_download_episode_basic() {
-        // User Story #3: Test basic download episode functionality
+        // User Story #3: Download episodes with basic validation
         let (_db, _rss) = setup_test_environment().await;
 
         // Simple test: Try to download an episode that doesn't exist in database
-        let result = download_episode(99999).await; // Non-existent episode ID
+        let result = download_episode(99999).await;
         assert!(result.is_err(), "Should fail for non-existent episode");
-        assert!(result.unwrap_err().contains("Episode not found"), "Should indicate episode not found");
+        assert!(
+            result.unwrap_err().contains("Episode not found"),
+            "Should return appropriate error message"
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_8_get_usb_devices_command() {
+        // User Story #8: See USB device storage capacity
+        // Test the command interface for USB device detection
+        let (_db, _rss) = setup_test_environment().await;
+        let start_time = Instant::now();
+        
+        let result = get_usb_devices().await;
+        let elapsed = start_time.elapsed();
+        
+        // Should complete successfully
+        assert!(result.is_ok(), "USB device detection command should not fail: {:?}", result);
+        
+        // Should complete within 5 seconds (User Story #8 acceptance criteria)
+        assert!(elapsed.as_secs() < 5, "USB device detection should complete within 5 seconds, took {:?}", elapsed);
+        
+        let devices = result.unwrap();
+        
+        // Should return a vector (may be empty if no USB devices connected)
+        log::info!("Found {} USB devices in command test", devices.len());
+        
+        // If devices are found, validate structure
+        for device in &devices {
+            // User Story #8: Storage capacity display requirements
+            assert!(!device.id.is_empty(), "Device ID should not be empty");
+            assert!(!device.name.is_empty(), "Device name should not be empty");
+            assert!(!device.path.is_empty(), "Device path should not be empty");
+            assert!(device.is_connected, "Detected devices should be connected");
+            
+            // Storage space validation (User Story #8 acceptance criteria)
+            assert!(device.available_space <= device.total_space, 
+                "Available space should not exceed total space");
+                
+            log::info!("USB Device - Name: {}, Path: {}, Total: {} bytes, Available: {} bytes", 
+                device.name, device.path, device.total_space, device.available_space);
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_8_usb_device_structure_validation() {
+        // User Story #8: Validate USB device data structure meets acceptance criteria
+        let (_db, _rss) = setup_test_environment().await;
+        
+        let devices = get_usb_devices().await.unwrap();
+        
+        for device in &devices {
+            // Validate required fields are present and valid
+            assert!(!device.id.is_empty(), "Device ID should not be empty");
+            assert!(!device.name.is_empty(), "Device name should not be empty");  
+            assert!(!device.path.is_empty(), "Device path should not be empty");
+            
+            // Validate device is marked as connected
+            assert!(device.is_connected, "Detected devices should be marked as connected");
+            
+            // Validate storage information (User Story #8 core requirement)
+            
+            // Validate storage relationship
+            assert!(device.available_space <= device.total_space,
+                "Available space ({} bytes) cannot exceed total space ({} bytes)",
+                device.available_space, device.total_space);
+            
+            // Validate ID is filesystem safe
+            assert!(!device.id.contains('/'), "Device ID should not contain path separators");
+            assert!(!device.id.contains('\\'), "Device ID should not contain path separators");
+            assert!(!device.id.contains(' '), "Device ID should not contain spaces");
+            
+            // Validate path looks reasonable
+            assert!(device.path.starts_with('/') || device.path.contains(':'),
+                "Device path should look like a valid mount point: {}", device.path);
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_8_performance_requirements() {
+        // User Story #8 Acceptance Criteria: Performance requirements
+        let (_db, _rss) = setup_test_environment().await;
+        
+        // Test multiple calls to ensure consistent performance
+        for i in 0..3 {
+            let start_time = Instant::now();
+            let result = get_usb_devices().await;
+            let elapsed = start_time.elapsed();
+            
+            assert!(result.is_ok(), "USB detection call {} should succeed", i + 1);
+            assert!(elapsed.as_secs() < 5, 
+                "USB detection call {} should complete within 5 seconds, took {:?}", 
+                i + 1, elapsed);
+                
+            // Performance should be consistent across calls
+            if i > 0 {
+                assert!(elapsed.as_millis() < 2000, 
+                    "Subsequent USB detection calls should be fast (< 2s), took {:?}", elapsed);
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_8_storage_space_calculations() {
+        // User Story #8: Storage space display validation
+        let (_db, _rss) = setup_test_environment().await;
+        
+        let devices = get_usb_devices().await.unwrap();
+        
+        for device in &devices {
+            // Test storage calculations make sense
+            let used_space = device.total_space - device.available_space;
+            
+            assert!(used_space <= device.total_space, "Used space should not exceed total");
+            
+            // If device has reasonable size, validate it's realistic for USB
+            if device.total_space > 0 {
+                // USB devices should have at least 1MB capacity
+                assert!(device.total_space >= 1_000_000, 
+                    "USB device should have at least 1MB capacity, got {} bytes", 
+                    device.total_space);
+                
+                // Should not be ridiculously large (> 16TB) - likely a detection error
+                assert!(device.total_space <= 16_000_000_000_000, 
+                    "USB device size seems unrealistic: {} bytes", device.total_space);
+            }
+            
+            // Calculate usage percentage
+            let usage_percent = if device.total_space > 0 {
+                (used_space as f64 / device.total_space as f64) * 100.0
+            } else {
+                0.0
+            };
+            
+            assert!((0.0..=100.0).contains(&usage_percent),
+                "Usage percentage should be between 0-100%, got {}%", usage_percent);
+                
+            log::info!("Device {} usage: {:.1}% ({} / {} bytes)",
+                device.name, usage_percent, used_space, device.total_space);
+        }
     }
 }

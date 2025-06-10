@@ -554,12 +554,50 @@ cargo check --all-targets    # Start fresh
 - [ ] ✅ `ai_assisted_development/ISSUES.md` updated with any test-discovered issues
 - [ ] ✅ `ai_assisted_development/QUALITY_METRICS.md` updated with coverage data
 
+### Git Commit Message Creation ⚠️ MANDATORY
+Before ending the session, create a comprehensive commit message following this template:
+
+```
+feat: Session [N] - [Primary User Story] - [Brief Description]
+
+Implements User Story #[X]: [User Story Title]
+- Acceptance Criteria: [List key criteria met]
+- Performance: [Performance achievements vs requirements]
+- Testing: [Test coverage added/maintained]
+
+Technical Implementation:
+- [Key module/component changes]
+- [Architecture improvements]
+- [Quality metrics achieved]
+
+Quality Assurance:
+- Tests: [before/after test count] ([percentage]% pass rate)
+- Clippy: Zero warnings maintained
+- Performance: [Key performance metrics]
+
+Addresses: [List any issues resolved]
+Next: [Next session priorities]
+
+Co-authored-by: AI Agent Session [N]
+```
+
+**Commit Message Guidelines:**
+- **Type**: Use conventional commits (feat:, fix:, docs:, test:, refactor:)
+- **Session Context**: Always include session number and primary focus
+- **User Story Focus**: Lead with the main user story addressed
+- **Acceptance Criteria**: Explicitly list acceptance criteria met
+- **Technical Details**: Include key implementation details
+- **Quality Metrics**: Include test counts and performance data
+- **Forward Looking**: Mention next session priorities
+- **AI Attribution**: Credit the AI agent session in co-authored-by
+
 ### Handoff Preparation ⚠️
 - [ ] ✅ All quality gates pass for next agent
 - [ ] ✅ Test suite runs successfully for verification
 - [ ] ✅ Clear instructions for next session with testing priorities
 - [ ] ✅ Environment left in clean, compilable state
 - [ ] ✅ User story priorities identified with testing requirements
+- [ ] ✅ **Commit message crafted and ready for application**
 
 ## 💡 Enhanced Development Tips
 
