@@ -27,9 +27,9 @@ This project is designed for **incremental development across multiple AI agent 
 ## 📋 Project Status
 
 - **Phase**: 1 (MVP Core)
-- **Week**: 1-2 (Project Setup & Basic Infrastructure) ✅ COMPLETED
-- **Overall Progress**: 15% (Initial setup completed)
-- **Next Priority**: Database schema implementation
+- **Week**: 5-6 (File Operations & USB Integration) 🔄 IN PROGRESS
+- **Overall Progress**: 50% (User Stories #1, #2, #3, #5, #6, #7, #8, #9 completed)
+- **Next Priority**: User Story #10 (Remove episodes from USB device)
 
 ## 🏗️ Architecture
 
@@ -44,12 +44,12 @@ This project is designed for **incremental development across multiple AI agent 
 - **Styling**: CSS (TBD: component library decision)
 - **State Management**: TBD (React hooks vs Redux)
 
-### Key Features (Planned)
-- 📻 RSS feed podcast subscription management
-- 📥 Episode download and local storage
-- 🔌 USB device detection and file transfer
-- 📊 Episode status tracking (New/Unlistened/Listened)
-- 🎛️ Configurable settings and preferences
+### Key Features (Implemented/Planned)
+- ✅ RSS feed podcast subscription management
+- ✅ Episode download and local storage
+- 🔄 USB device detection and file transfer (detection ✅, transfer ✅, removal pending)
+- ✅ Episode status tracking (New/Unlistened/Listened)
+- ⏳ Configurable settings and preferences
 
 ## 🛠️ Development Environment
 
@@ -108,8 +108,8 @@ podpico/
 
 ### Phase 1: MVP Core (Weeks 1-6)
 - ✅ **Week 1-2**: Project setup and basic infrastructure (COMPLETED)
-- 🔄 **Week 3-4**: Podcast management (RSS parsing, CRUD operations)
-- ⏳ **Week 5-6**: File operations and USB integration
+- ✅ **Week 3-4**: Podcast management (COMPLETED - User Stories #1, #2, #5, #6, #7)
+- 🔄 **Week 5-6**: File operations and USB integration (IN PROGRESS - User Stories #3, #8, #9 completed)
 
 ### Phase 2: Enhanced Features (Weeks 7-10)
 - User interface polish and user experience improvements
@@ -187,4 +187,4 @@ For development questions or issues:
 
 ---
 
-**Current Status**: Ready for next development session (Database schema implementation)
+**Current Status**: Ready for User Story #10 implementation (Remove episodes from USB device) - USB transfer foundation complete

@@ -553,6 +553,7 @@ cargo check --all-targets    # Start fresh
 - [ ] ✅ `ai_assisted_development/SESSION_NOTES.md` updated with testing approach
 - [ ] ✅ `ai_assisted_development/ISSUES.md` updated with any test-discovered issues
 - [ ] ✅ `ai_assisted_development/QUALITY_METRICS.md` updated with coverage data
+- [ ] ✅ **`README.md` updated with current project status (if applicable)**
 
 ## 🚨 MANDATORY: GIT COMMIT MESSAGE CREATION
 
@@ -608,6 +609,77 @@ Co-authored-by: AI Agent Session [N]
 - [ ] ✅ Environment left in clean, compilable state
 - [ ] ✅ User story priorities identified with testing requirements
 - [ ] ✅ **🚨 COMMIT MESSAGE CRAFTED AND READY FOR APPLICATION 🚨**
+- [ ] ✅ **README.md updated with current status (see README Update Guidelines below)**
+
+## 📄 README.md Update Guidelines
+
+### When to Update README.md
+Update the README.md file when any of the following occur during a session:
+- **Phase or Week progression** (e.g., completing Week 3-4, moving to Week 5-6)
+- **Significant milestone completion** (e.g., multiple user stories completed)
+- **Overall progress percentage changes** significantly (±10% or more)
+- **Architecture changes** that affect the technical stack
+- **New major features** that should be highlighted in the feature list
+
+### What to Update in README.md
+
+#### 1. Project Status Section
+```markdown
+## 📋 Project Status
+
+- **Phase**: [Current Phase Number] ([Phase Name])
+- **Week**: [Current Week Range] ([Week Description]) [Status: ✅ COMPLETED / 🔄 IN PROGRESS / ⏳ PENDING]
+- **Overall Progress**: [Percentage]% ([Brief description of current state])
+- **Next Priority**: [Next major user story or milestone]
+```
+
+#### 2. Development Phases Section
+Mark completed phases/weeks with ✅ and update status:
+```markdown
+### Phase 1: MVP Core (Weeks 1-6)
+- ✅ **Week 1-2**: Project setup and basic infrastructure (COMPLETED)
+- ✅ **Week 3-4**: Podcast management (COMPLETED - User Stories #1, #2, #5, #6, #7)
+- 🔄 **Week 5-6**: File operations and USB integration (IN PROGRESS - User Stories #3, #8, #9)
+```
+
+#### 3. Current Status Footer
+```markdown
+**Current Status**: [Brief description of what's ready for next session]
+```
+
+#### 4. Architecture Section (if applicable)
+Update key features list when new major features are implemented:
+```markdown
+### Key Features (Implemented/Planned)
+- ✅ RSS feed podcast subscription management
+- ✅ Episode download and local storage
+- 🔄 USB device detection and file transfer
+- ✅ Episode status tracking (New/Unlistened/Listened)
+- ⏳ Configurable settings and preferences
+```
+
+### README Update Examples
+
+#### Example 1: Major Milestone Completion
+If completing multiple user stories in a session:
+```markdown
+- **Overall Progress**: 45% (User Stories #1-9 completed with full test coverage)
+- **Next Priority**: User Story #10 (Remove episodes from USB device)
+```
+
+#### Example 2: Phase Transition
+If moving from one phase/week to another:
+```markdown
+- **Week**: 5-6 (File operations and USB integration) ✅ COMPLETED
+- **Week**: 7-8 (User Interface Polish) 🔄 IN PROGRESS
+```
+
+### README Update Checklist
+- [ ] Project Status section reflects current phase and progress
+- [ ] Development Phases section shows completed items with ✅
+- [ ] Key Features section updated with implemented features
+- [ ] Current Status footer describes what's ready for next session
+- [ ] Overall Progress percentage is accurate based on user stories completed
 
 ## 💡 Enhanced Development Tips
 
