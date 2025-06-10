@@ -328,6 +328,32 @@ impl DatabaseManager {
         Ok(())
     }
 
+    pub async fn update_episode_on_device_status(
+        &self,
+        episode_id: i64,
+        on_device: bool,
+    ) -> Result<(), PodPicoError> {
+        log::info!(
+            "Updating episode {} on_device status to: {} (User Story #9)",
+            episode_id,
+            on_device
+        );
+
+        sqlx::query(
+            r#"
+            UPDATE episodes 
+            SET on_device = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        "#,
+        )
+        .bind(on_device)
+        .bind(episode_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn add_episode(
         &self,

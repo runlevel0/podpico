@@ -48,6 +48,10 @@ impl FileManager {
         }
     }
 
+    pub fn clone_manager(&self) -> Self {
+        Self::new(&self.download_directory.to_string_lossy())
+    }
+
     pub async fn initialize(&self) -> Result<(), PodPicoError> {
         log::info!("Initializing file manager");
         fs::create_dir_all(&self.download_directory).await?;

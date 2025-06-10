@@ -4,6 +4,8 @@
 
 use crate::database::DatabaseManager;
 use crate::rss_manager::RssManager;
+use crate::file_manager::FileManager;
+use crate::usb_manager::UsbManager;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -61,13 +63,21 @@ pub struct AppConfig {
 // Global instances (to be initialized in lib.rs)
 static DATABASE: Mutex<Option<Arc<DatabaseManager>>> = Mutex::const_new(None);
 static RSS_MANAGER: Mutex<Option<Arc<RssManager>>> = Mutex::const_new(None);
+static FILE_MANAGER: Mutex<Option<Arc<FileManager>>> = Mutex::const_new(None);
+static USB_MANAGER: Mutex<Option<Arc<UsbManager>>> = Mutex::const_new(None);
 
-pub async fn initialize_managers(db: DatabaseManager, rss: RssManager) {
+pub async fn initialize_managers(db: DatabaseManager, rss: RssManager, file: FileManager, usb: UsbManager) {
     let mut db_lock = DATABASE.lock().await;
     *db_lock = Some(Arc::new(db));
 
     let mut rss_lock = RSS_MANAGER.lock().await;
     *rss_lock = Some(Arc::new(rss));
+
+    let mut file_lock = FILE_MANAGER.lock().await;
+    *file_lock = Some(Arc::new(file));
+
+    let mut usb_lock = USB_MANAGER.lock().await;
+    *usb_lock = Some(Arc::new(usb));
 }
 
 // Development/demo command
@@ -353,8 +363,62 @@ pub async fn transfer_episode_to_device(episode_id: i64, device_id: String) -> R
         episode_id,
         device_id
     );
-    // TODO: Implement file transfer to USB device
-    Err("Not implemented yet".to_string())
+
+    // Get managers
+    let db_lock = DATABASE.lock().await;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+
+    let usb_lock = USB_MANAGER.lock().await;
+    let usb_manager = usb_lock.as_ref().ok_or("USB manager not initialized")?;
+
+    // User Story #9: Transfer episodes to USB device
+    // Acceptance Criteria: Progress indicator, transfer speed, success indication, error handling
+
+    // Step 1: Get episode information from database
+    let episodes = db.get_episodes(Some(episode_id)).await
+        .map_err(|e| format!("Failed to get episode: {}", e))?;
+    
+    let episode = episodes.into_iter()
+        .find(|ep| ep.id == episode_id)
+        .ok_or(format!("Episode {} not found", episode_id))?;
+
+    // Step 2: Verify episode is downloaded
+    if !episode.downloaded || episode.local_file_path.is_none() {
+        return Err(format!("Episode {} is not downloaded yet. Please download it first.", episode_id));
+    }
+
+    let local_file_path = episode.local_file_path.unwrap();
+
+    // Step 3: Find USB device by device_id
+    let mut usb_manager_mut = UsbManager::new(); // Create a mutable instance for device detection
+    let devices = usb_manager_mut.detect_devices()
+        .map_err(|e| format!("Failed to detect USB devices: {}", e))?;
+
+    let device = devices.into_iter()
+        .find(|dev| dev.id == device_id)
+        .ok_or(format!("USB device {} not found or not connected", device_id))?;
+
+    // Step 4: Generate filename from episode title (sanitized for filesystem)
+    let filename = format!("{}.mp3", 
+        episode.title
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' { c } else { '_' })
+            .collect::<String>()
+            .trim()
+    );
+
+    // Step 5: Transfer file with progress tracking
+    usb_manager.transfer_file(&local_file_path, &device.path, &filename).await
+        .map_err(|e| format!("Transfer failed: {}", e))?;
+
+    // Step 6: Update episode transfer status in database
+    // TODO: Add database field for tracking which episodes are on which devices
+    // For now, we'll update the on_device flag
+    db.update_episode_on_device_status(episode_id, true).await
+        .map_err(|e| format!("Failed to update episode transfer status: {}", e))?;
+
+    log::info!("Successfully transferred episode {} to device {}", episode_id, device_id);
+    Ok(())
 }
 
 #[tauri::command]
@@ -394,11 +458,13 @@ mod tests {
     use super::*;
     use crate::database::DatabaseManager;
     use crate::rss_manager::RssManager;
+    use crate::file_manager::FileManager;
+    use crate::usb_manager::UsbManager;
     use httpmock::prelude::*;
     use serial_test::serial;
     use std::time::Instant;
 
-    async fn setup_test_environment() -> (DatabaseManager, RssManager) {
+    async fn setup_test_environment() -> (DatabaseManager, RssManager, FileManager, UsbManager) {
         // Use in-memory SQLite database for testing
         let db_url = "sqlite::memory:";
 
@@ -406,11 +472,19 @@ mod tests {
         db.initialize().await.unwrap();
 
         let rss_manager = RssManager::new();
+        let file_manager = FileManager::new("./test_episodes");
+        file_manager.initialize().await.unwrap();
+        let usb_manager = UsbManager::new();
 
         // Initialize global managers for command testing
-        initialize_managers(db.clone_manager(), rss_manager.clone_manager()).await;
+        initialize_managers(
+            db.clone_manager(), 
+            rss_manager.clone_manager(),
+            file_manager.clone_manager(),
+            usb_manager.clone_manager()
+        ).await;
 
-        (db, rss_manager)
+        (db, rss_manager, file_manager, usb_manager)
     }
 
     impl Clone for DatabaseManager {
@@ -425,6 +499,18 @@ mod tests {
         }
     }
 
+    impl Clone for FileManager {
+        fn clone(&self) -> Self {
+            FileManager::new("./test_episodes")
+        }
+    }
+
+    impl Clone for UsbManager {
+        fn clone(&self) -> Self {
+            UsbManager::new()
+        }
+    }
+
     #[tokio::test]
     async fn test_greet_command() {
         let result = greet("Test User").await;
@@ -436,7 +522,7 @@ mod tests {
     #[serial]
     async fn test_user_story_1_add_podcast_command() {
         // User Story #1: Add new podcast subscription via RSS URL
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let server = MockServer::start();
 
         let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -507,7 +593,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_add_podcast_invalid_url() {
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
 
         let result = add_podcast("invalid-url".to_string()).await;
         assert!(result.is_err());
@@ -518,7 +604,7 @@ mod tests {
     #[serial]
     async fn test_user_story_4_remove_podcast_command() {
         // User Story #4: Remove podcast subscriptions
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let server = MockServer::start();
 
         let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -561,7 +647,7 @@ mod tests {
     #[serial]
     async fn test_user_story_2_get_episodes_command() {
         // User Story #2: View all episodes of specific podcast
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let server = MockServer::start();
 
         let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -620,7 +706,7 @@ mod tests {
     #[serial]
     async fn test_user_story_7_combined_inbox_command() {
         // User Story #7: View all new episodes across podcasts (Combined Inbox)
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let server = MockServer::start();
 
         let feed1 = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -686,7 +772,7 @@ mod tests {
     #[serial]
     async fn test_user_story_5_update_episode_status_command() {
         // User Story #5: Mark episodes as "listened"
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let server = MockServer::start();
 
         let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -736,7 +822,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_update_episode_status_invalid() {
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
 
         let result = update_episode_status(999, "invalid_status".to_string()).await;
         assert!(result.is_err());
@@ -746,7 +832,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_get_podcasts_empty() {
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
 
         let result = get_podcasts().await;
         assert!(result.is_ok());
@@ -756,7 +842,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_get_episodes_empty() {
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
 
         let result = get_episodes(Some(1)).await;
         assert!(result.is_ok());
@@ -767,7 +853,7 @@ mod tests {
     #[serial]
     async fn test_user_story_1_complete_workflow() {
         // Complete User Story #1 workflow test
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let server = MockServer::start();
 
         let complete_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -846,7 +932,7 @@ mod tests {
     #[serial]
     async fn test_user_story_3_download_progress_tracking() {
         // User Story #3 Acceptance Criteria: Download progress percentage tracking
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
 
         // Test that progress tracking works for non-existent episode
         let progress = get_download_progress(999).await; // Non-existent episode
@@ -861,7 +947,7 @@ mod tests {
     #[serial]
     async fn test_user_story_3_download_already_downloaded() {
         // Test downloading an already downloaded episode
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let server = MockServer::start();
 
         let feed_mock = server.mock(|when, then| {
@@ -911,7 +997,7 @@ mod tests {
     #[serial]
     async fn test_user_story_3_download_episode_basic() {
         // User Story #3: Download episodes with basic validation
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
 
         // Simple test: Try to download an episode that doesn't exist in database
         let result = download_episode(99999).await;
@@ -927,7 +1013,7 @@ mod tests {
     async fn test_user_story_8_get_usb_devices_command() {
         // User Story #8: See USB device storage capacity
         // Test the command interface for USB device detection
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let start_time = Instant::now();
         
         let result = get_usb_devices().await;
@@ -965,7 +1051,7 @@ mod tests {
     #[serial]
     async fn test_user_story_8_usb_device_structure_validation() {
         // User Story #8: Validate USB device data structure meets acceptance criteria
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         
         let devices = get_usb_devices().await.unwrap();
         
@@ -1000,7 +1086,7 @@ mod tests {
     #[serial]
     async fn test_user_story_8_performance_requirements() {
         // User Story #8 Acceptance Criteria: Performance requirements
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         
         // Test multiple calls to ensure consistent performance
         for i in 0..3 {
@@ -1025,40 +1111,143 @@ mod tests {
     #[serial]
     async fn test_user_story_8_storage_space_calculations() {
         // User Story #8: Storage space display validation
-        let (_db, _rss) = setup_test_environment().await;
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
         
         let devices = get_usb_devices().await.unwrap();
         
         for device in &devices {
-            // Test storage calculations make sense
-            let used_space = device.total_space - device.available_space;
+            // Storage space should be reasonable
+            assert!(device.total_space > 0, "Total space should be positive");
+            assert!(device.available_space <= device.total_space, "Available space should not exceed total");
             
-            assert!(used_space <= device.total_space, "Used space should not exceed total");
-            
-            // If device has reasonable size, validate it's realistic for USB
-            if device.total_space > 0 {
-                // USB devices should have at least 1MB capacity
-                assert!(device.total_space >= 1_000_000, 
-                    "USB device should have at least 1MB capacity, got {} bytes", 
-                    device.total_space);
-                
-                // Should not be ridiculously large (> 16TB) - likely a detection error
-                assert!(device.total_space <= 16_000_000_000_000, 
-                    "USB device size seems unrealistic: {} bytes", device.total_space);
-            }
-            
-            // Calculate usage percentage
-            let usage_percent = if device.total_space > 0 {
-                (used_space as f64 / device.total_space as f64) * 100.0
-            } else {
-                0.0
-            };
-            
-            assert!((0.0..=100.0).contains(&usage_percent),
-                "Usage percentage should be between 0-100%, got {}%", usage_percent);
-                
-            log::info!("Device {} usage: {:.1}% ({} / {} bytes)",
-                device.name, usage_percent, used_space, device.total_space);
+            // Storage space should be in reasonable ranges (not absurdly large)
+            // Allow for very large drives (up to 10TB)
+            assert!(device.total_space < 10_000_000_000_000, "Total space should be reasonable (< 10TB)");
         }
+        
+        // Test should complete within reasonable time
+        let start = std::time::Instant::now();
+        let _devices = get_usb_devices().await.unwrap();
+        let elapsed = start.elapsed();
+        assert!(elapsed.as_secs() < 2, "Multiple USB device calls should complete quickly");
+    }
+
+    // USER STORY #9 TESTS - Transfer episodes to USB device
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_9_transfer_episode_to_device_command() {
+        // User Story #9: Transfer episodes to USB device
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+        let server = MockServer::start();
+
+        // Create a mock podcast and episode
+        let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+            <title>Transfer Test Podcast</title>
+            <description>Podcast for testing episode transfers</description>
+            <item>
+                <title>Episode to Transfer</title>
+                <description>This episode will be transferred to USB</description>
+                <enclosure url="https://example.com/transfer.mp3" type="audio/mpeg" length="1000000"/>
+                <pubDate>Wed, 01 Feb 2023 00:00:00 +0000</pubDate>
+            </item>
+        </channel>
+        </rss>"#;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/transfer-test.xml");
+            then.status(200)
+                .header("content-type", "application/rss+xml")
+                .body(mock_feed);
+        });
+
+        let url = server.url("/transfer-test.xml");
+
+        // Add podcast and get episode
+        let podcast = add_podcast(url).await.unwrap();
+        let episodes = get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes.len(), 1);
+        let episode_id = episodes[0].id;
+
+        // Mock episode as downloaded (normally would be done by download_episode)
+        // For testing, we'll create a test file and mark it as downloaded
+        std::fs::create_dir_all("./test_episodes").unwrap();
+        let test_file_path = format!("./test_episodes/{}/{}_Episode_to_Transfer.mp3", podcast.id, episode_id);
+        std::fs::create_dir_all(format!("./test_episodes/{}", podcast.id)).unwrap();
+        std::fs::write(&test_file_path, b"test episode content for transfer").unwrap();
+
+        // Manually update database to mark as downloaded
+        let db_lock = DATABASE.lock().await;
+        let db = db_lock.as_ref().unwrap();
+        db.update_episode_downloaded_status(episode_id, true, Some(&test_file_path)).await.unwrap();
+        drop(db_lock);
+
+        // Test transfer to non-existent device (should fail)
+        let result = transfer_episode_to_device(episode_id, "nonexistent_device".to_string()).await;
+        assert!(result.is_err(), "Transfer to nonexistent device should fail");
+        assert!(result.unwrap_err().contains("not found"), "Error should mention device not found");
+
+        // Test transfer of non-downloaded episode
+        let episodes2 = get_episodes(Some(podcast.id)).await.unwrap();
+        let non_downloaded_episode = episodes2.iter().find(|ep| !ep.downloaded);
+        if let Some(ep) = non_downloaded_episode {
+            let result = transfer_episode_to_device(ep.id, "test_device".to_string()).await;
+            assert!(result.is_err(), "Transfer of non-downloaded episode should fail");
+            assert!(result.unwrap_err().contains("not downloaded"), "Error should mention episode not downloaded");
+        }
+
+        mock.assert();
+
+        // Cleanup
+        std::fs::remove_file(&test_file_path).unwrap_or(());
+        std::fs::remove_dir_all("./test_episodes").unwrap_or(());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_9_transfer_nonexistent_episode() {
+        // User Story #9: Error handling for nonexistent episode
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+
+        let result = transfer_episode_to_device(999, "test_device".to_string()).await;
+        assert!(result.is_err(), "Transfer of nonexistent episode should fail");
+        assert!(result.unwrap_err().contains("not found"), "Error should mention episode not found");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_9_transfer_performance_requirements() {
+        // User Story #9: Transfer performance requirements
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+
+        // Test that transfer command responds quickly even when failing
+        let start_time = std::time::Instant::now();
+        let result = transfer_episode_to_device(999, "nonexistent".to_string()).await;
+        let elapsed = start_time.elapsed();
+
+        assert!(result.is_err(), "Transfer should fail for invalid inputs");
+        assert!(elapsed.as_millis() < 1000, "Transfer command should respond within 1 second even when failing");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_9_transfer_error_messages() {
+        // User Story #9: Clear error messages for transfer failures
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+
+        // Test various error scenarios
+        let result1 = transfer_episode_to_device(999, "device".to_string()).await;
+        assert!(result1.is_err());
+        let error1 = result1.unwrap_err();
+        assert!(!error1.is_empty(), "Error message should not be empty");
+        assert!(error1.contains("Episode"), "Error should mention episode");
+
+        let result2 = transfer_episode_to_device(1, "nonexistent_device".to_string()).await;
+        assert!(result2.is_err());
+        let error2 = result2.unwrap_err();
+        assert!(!error2.is_empty(), "Error message should not be empty");
+        // Error could be about episode not found or device not found, both are valid
     }
 }

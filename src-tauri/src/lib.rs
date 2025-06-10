@@ -20,6 +20,8 @@ pub use error::PodPicoError;
 
 use database::DatabaseManager;
 use rss_manager::RssManager;
+use file_manager::FileManager;
+use usb_manager::UsbManager;
 use std::fs;
 
 // Tauri application entry point
@@ -73,6 +75,11 @@ async fn initialize_app() -> Result<(), Box<dyn std::error::Error + Send + Sync>
     fs::create_dir_all(&data_dir)?;
     log::info!("Created data directory: {}", data_dir.display());
 
+    // Create downloads directory for episodes
+    let downloads_dir = data_dir.join("episodes");
+    fs::create_dir_all(&downloads_dir)?;
+    log::info!("Created downloads directory: {}", downloads_dir.display());
+
     // Initialize database - create the file first to ensure permissions work
     let db_path = data_dir.join("podcasts.db");
 
@@ -94,9 +101,19 @@ async fn initialize_app() -> Result<(), Box<dyn std::error::Error + Send + Sync>
     // Initialize RSS manager
     let rss_manager = RssManager::new();
 
-    // Initialize managers globally
-    commands::initialize_managers(db, rss_manager).await;
+    // Initialize file manager (User Story #3, #9)
+    let downloads_dir_str = downloads_dir.to_string_lossy().to_string();
+    let file_manager = FileManager::new(&downloads_dir_str);
+    file_manager.initialize().await?;
+    log::info!("File manager initialized with downloads directory: {}", downloads_dir_str);
 
-    log::info!("Database and RSS manager initialized successfully");
+    // Initialize USB manager (User Stories #8, #9, #10, #11)
+    let usb_manager = UsbManager::new();
+    log::info!("USB manager initialized for device operations");
+
+    // Initialize managers globally
+    commands::initialize_managers(db, rss_manager, file_manager, usb_manager).await;
+
+    log::info!("All managers initialized successfully");
     Ok(())
 }

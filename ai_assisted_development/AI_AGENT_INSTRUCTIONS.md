@@ -554,9 +554,13 @@ cargo check --all-targets    # Start fresh
 - [ ] ✅ `ai_assisted_development/ISSUES.md` updated with any test-discovered issues
 - [ ] ✅ `ai_assisted_development/QUALITY_METRICS.md` updated with coverage data
 
-### Git Commit Message Creation ⚠️ MANDATORY
-Before ending the session, create a comprehensive commit message following this template:
+## 🚨 MANDATORY: GIT COMMIT MESSAGE CREATION
 
+### **BEFORE ENDING ANY SESSION** ⚠️ CRITICAL
+
+Every AI agent session MUST end with creating a comprehensive commit message. This is NOT optional and should be treated as the final deliverable of each session.
+
+#### Commit Message Template (MANDATORY)
 ```
 feat: Session [N] - [Primary User Story] - [Brief Description]
 
@@ -581,7 +585,7 @@ Next: [Next session priorities]
 Co-authored-by: AI Agent Session [N]
 ```
 
-**Commit Message Guidelines:**
+#### Commit Message Guidelines ⚠️ MANDATORY
 - **Type**: Use conventional commits (feat:, fix:, docs:, test:, refactor:)
 - **Session Context**: Always include session number and primary focus
 - **User Story Focus**: Lead with the main user story addressed
@@ -591,13 +595,19 @@ Co-authored-by: AI Agent Session [N]
 - **Forward Looking**: Mention next session priorities
 - **AI Attribution**: Credit the AI agent session in co-authored-by
 
+#### When to Create Commit Message
+- **Timing**: After all quality gates pass but BEFORE ending session
+- **Purpose**: Documents session achievements for next agent
+- **Format**: Ready-to-use git commit message
+- **Validation**: Must reflect actual work completed in session
+
 ### Handoff Preparation ⚠️
 - [ ] ✅ All quality gates pass for next agent
 - [ ] ✅ Test suite runs successfully for verification
 - [ ] ✅ Clear instructions for next session with testing priorities
 - [ ] ✅ Environment left in clean, compilable state
 - [ ] ✅ User story priorities identified with testing requirements
-- [ ] ✅ **Commit message crafted and ready for application**
+- [ ] ✅ **🚨 COMMIT MESSAGE CRAFTED AND READY FOR APPLICATION 🚨**
 
 ## 💡 Enhanced Development Tips
 
