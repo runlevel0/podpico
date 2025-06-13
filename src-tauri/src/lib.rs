@@ -19,10 +19,10 @@ pub use commands::*;
 pub use error::PodPicoError;
 
 use database::DatabaseManager;
-use rss_manager::RssManager;
 use file_manager::FileManager;
-use usb_manager::UsbManager;
+use rss_manager::RssManager;
 use std::fs;
+use usb_manager::UsbManager;
 
 // Tauri application entry point
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -105,7 +105,10 @@ async fn initialize_app() -> Result<(), Box<dyn std::error::Error + Send + Sync>
     let downloads_dir_str = downloads_dir.to_string_lossy().to_string();
     let file_manager = FileManager::new(&downloads_dir_str);
     file_manager.initialize().await?;
-    log::info!("File manager initialized with downloads directory: {}", downloads_dir_str);
+    log::info!(
+        "File manager initialized with downloads directory: {}",
+        downloads_dir_str
+    );
 
     // Initialize USB manager (User Stories #8, #9, #10, #11)
     let usb_manager = UsbManager::new();

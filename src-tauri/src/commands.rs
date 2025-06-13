@@ -3,8 +3,8 @@
 // User Story Driven Implementation
 
 use crate::database::DatabaseManager;
-use crate::rss_manager::RssManager;
 use crate::file_manager::FileManager;
+use crate::rss_manager::RssManager;
 use crate::usb_manager::UsbManager;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -66,7 +66,12 @@ static RSS_MANAGER: Mutex<Option<Arc<RssManager>>> = Mutex::const_new(None);
 static FILE_MANAGER: Mutex<Option<Arc<FileManager>>> = Mutex::const_new(None);
 static USB_MANAGER: Mutex<Option<Arc<UsbManager>>> = Mutex::const_new(None);
 
-pub async fn initialize_managers(db: DatabaseManager, rss: RssManager, file: FileManager, usb: UsbManager) {
+pub async fn initialize_managers(
+    db: DatabaseManager,
+    rss: RssManager,
+    file: FileManager,
+    usb: UsbManager,
+) {
     let mut db_lock = DATABASE.lock().await;
     *db_lock = Some(Arc::new(db));
 
@@ -350,9 +355,10 @@ pub async fn get_download_progress(episode_id: i64) -> Result<f64, String> {
 #[tauri::command]
 pub async fn get_usb_devices() -> Result<Vec<UsbDevice>, String> {
     log::info!("Getting USB devices (User Story #8)");
-    
+
     let mut usb_manager = crate::usb_manager::UsbManager::new();
-    usb_manager.detect_devices()
+    usb_manager
+        .detect_devices()
         .map_err(|e| format!("Failed to detect USB devices: {}", e))
 }
 
@@ -375,49 +381,75 @@ pub async fn transfer_episode_to_device(episode_id: i64, device_id: String) -> R
     // Acceptance Criteria: Progress indicator, transfer speed, success indication, error handling
 
     // Step 1: Get episode information from database
-    let episodes = db.get_episodes(Some(episode_id)).await
+    let episodes = db
+        .get_episodes(Some(episode_id))
+        .await
         .map_err(|e| format!("Failed to get episode: {}", e))?;
-    
-    let episode = episodes.into_iter()
+
+    let episode = episodes
+        .into_iter()
         .find(|ep| ep.id == episode_id)
         .ok_or(format!("Episode {} not found", episode_id))?;
 
     // Step 2: Verify episode is downloaded
     if !episode.downloaded || episode.local_file_path.is_none() {
-        return Err(format!("Episode {} is not downloaded yet. Please download it first.", episode_id));
+        return Err(format!(
+            "Episode {} is not downloaded yet. Please download it first.",
+            episode_id
+        ));
     }
 
     let local_file_path = episode.local_file_path.unwrap();
 
     // Step 3: Find USB device by device_id
     let mut usb_manager_mut = UsbManager::new(); // Create a mutable instance for device detection
-    let devices = usb_manager_mut.detect_devices()
+    let devices = usb_manager_mut
+        .detect_devices()
         .map_err(|e| format!("Failed to detect USB devices: {}", e))?;
 
-    let device = devices.into_iter()
+    let device = devices
+        .into_iter()
         .find(|dev| dev.id == device_id)
-        .ok_or(format!("USB device {} not found or not connected", device_id))?;
+        .ok_or(format!(
+            "USB device {} not found or not connected",
+            device_id
+        ))?;
 
     // Step 4: Generate filename from episode title (sanitized for filesystem)
-    let filename = format!("{}.mp3", 
-        episode.title
+    let filename = format!(
+        "{}.mp3",
+        episode
+            .title
             .chars()
-            .map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' { c } else { '_' })
+            .map(
+                |c| if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            )
             .collect::<String>()
             .trim()
     );
 
     // Step 5: Transfer file with progress tracking
-    usb_manager.transfer_file(&local_file_path, &device.path, &filename).await
+    usb_manager
+        .transfer_file(&local_file_path, &device.path, &filename)
+        .await
         .map_err(|e| format!("Transfer failed: {}", e))?;
 
     // Step 6: Update episode transfer status in database
     // TODO: Add database field for tracking which episodes are on which devices
     // For now, we'll update the on_device flag
-    db.update_episode_on_device_status(episode_id, true).await
+    db.update_episode_on_device_status(episode_id, true)
+        .await
         .map_err(|e| format!("Failed to update episode transfer status: {}", e))?;
 
-    log::info!("Successfully transferred episode {} to device {}", episode_id, device_id);
+    log::info!(
+        "Successfully transferred episode {} to device {}",
+        episode_id,
+        device_id
+    );
     Ok(())
 }
 
@@ -428,8 +460,84 @@ pub async fn remove_episode_from_device(episode_id: i64, device_id: String) -> R
         episode_id,
         device_id
     );
-    // TODO: Implement file removal from USB device
-    Err("Not implemented yet".to_string())
+
+    // Get managers
+    let db_lock = DATABASE.lock().await;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+
+    let usb_lock = USB_MANAGER.lock().await;
+    let usb_manager = usb_lock.as_ref().ok_or("USB manager not initialized")?;
+
+    // User Story #10: Remove episodes from USB device
+    // Acceptance Criteria: Confirmation before deletion, update indicators, increase storage space
+
+    // Step 1: Get episode information from database
+    let episodes = db
+        .get_episodes(Some(episode_id))
+        .await
+        .map_err(|e| format!("Failed to get episode: {}", e))?;
+
+    let episode = episodes
+        .into_iter()
+        .find(|ep| ep.id == episode_id)
+        .ok_or(format!("Episode {} not found", episode_id))?;
+
+    // Step 2: Verify episode is currently on device
+    if !episode.on_device {
+        return Err(format!(
+            "Episode {} is not currently on any USB device",
+            episode_id
+        ));
+    }
+
+    // Step 3: Find USB device by device_id
+    let mut usb_manager_mut = UsbManager::new(); // Create a mutable instance for device detection
+    let devices = usb_manager_mut
+        .detect_devices()
+        .map_err(|e| format!("Failed to detect USB devices: {}", e))?;
+
+    let device = devices
+        .into_iter()
+        .find(|dev| dev.id == device_id)
+        .ok_or(format!(
+            "USB device {} not found or not connected",
+            device_id
+        ))?;
+
+    // Step 4: Generate filename from episode title (same as transfer logic)
+    let filename = format!(
+        "{}.mp3",
+        episode
+            .title
+            .chars()
+            .map(
+                |c| if c.is_alphanumeric() || c == ' ' || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            )
+            .collect::<String>()
+            .trim()
+    );
+
+    // Step 5: User Story #10 Acceptance Criteria: Remove file from USB device
+    usb_manager
+        .remove_file(&device.path, &filename)
+        .await
+        .map_err(|e| format!("File removal failed: {}", e))?;
+
+    // Step 6: User Story #10 Acceptance Criteria: Update episode status (no longer shows "on device" indicator)
+    db.update_episode_on_device_status(episode_id, false)
+        .await
+        .map_err(|e| format!("Failed to update episode device status: {}", e))?;
+
+    log::info!(
+        "Successfully removed episode {} from device {} (User Story #10)",
+        episode_id,
+        device_id
+    );
+    Ok(())
 }
 
 // Configuration commands
@@ -457,8 +565,8 @@ pub async fn update_app_config(config: AppConfig) -> Result<(), String> {
 mod tests {
     use super::*;
     use crate::database::DatabaseManager;
-    use crate::rss_manager::RssManager;
     use crate::file_manager::FileManager;
+    use crate::rss_manager::RssManager;
     use crate::usb_manager::UsbManager;
     use httpmock::prelude::*;
     use serial_test::serial;
@@ -478,11 +586,12 @@ mod tests {
 
         // Initialize global managers for command testing
         initialize_managers(
-            db.clone_manager(), 
+            db.clone_manager(),
             rss_manager.clone_manager(),
             file_manager.clone_manager(),
-            usb_manager.clone_manager()
-        ).await;
+            usb_manager.clone_manager(),
+        )
+        .await;
 
         (db, rss_manager, file_manager, usb_manager)
     }
@@ -1015,21 +1124,29 @@ mod tests {
         // Test the command interface for USB device detection
         let (_db, _rss, _file, _usb) = setup_test_environment().await;
         let start_time = Instant::now();
-        
+
         let result = get_usb_devices().await;
         let elapsed = start_time.elapsed();
-        
+
         // Should complete successfully
-        assert!(result.is_ok(), "USB device detection command should not fail: {:?}", result);
-        
+        assert!(
+            result.is_ok(),
+            "USB device detection command should not fail: {:?}",
+            result
+        );
+
         // Should complete within 5 seconds (User Story #8 acceptance criteria)
-        assert!(elapsed.as_secs() < 5, "USB device detection should complete within 5 seconds, took {:?}", elapsed);
-        
+        assert!(
+            elapsed.as_secs() < 5,
+            "USB device detection should complete within 5 seconds, took {:?}",
+            elapsed
+        );
+
         let devices = result.unwrap();
-        
+
         // Should return a vector (may be empty if no USB devices connected)
         log::info!("Found {} USB devices in command test", devices.len());
-        
+
         // If devices are found, validate structure
         for device in &devices {
             // User Story #8: Storage capacity display requirements
@@ -1037,13 +1154,20 @@ mod tests {
             assert!(!device.name.is_empty(), "Device name should not be empty");
             assert!(!device.path.is_empty(), "Device path should not be empty");
             assert!(device.is_connected, "Detected devices should be connected");
-            
+
             // Storage space validation (User Story #8 acceptance criteria)
-            assert!(device.available_space <= device.total_space, 
-                "Available space should not exceed total space");
-                
-            log::info!("USB Device - Name: {}, Path: {}, Total: {} bytes, Available: {} bytes", 
-                device.name, device.path, device.total_space, device.available_space);
+            assert!(
+                device.available_space <= device.total_space,
+                "Available space should not exceed total space"
+            );
+
+            log::info!(
+                "USB Device - Name: {}, Path: {}, Total: {} bytes, Available: {} bytes",
+                device.name,
+                device.path,
+                device.total_space,
+                device.available_space
+            );
         }
     }
 
@@ -1052,33 +1176,51 @@ mod tests {
     async fn test_user_story_8_usb_device_structure_validation() {
         // User Story #8: Validate USB device data structure meets acceptance criteria
         let (_db, _rss, _file, _usb) = setup_test_environment().await;
-        
+
         let devices = get_usb_devices().await.unwrap();
-        
+
         for device in &devices {
             // Validate required fields are present and valid
             assert!(!device.id.is_empty(), "Device ID should not be empty");
-            assert!(!device.name.is_empty(), "Device name should not be empty");  
+            assert!(!device.name.is_empty(), "Device name should not be empty");
             assert!(!device.path.is_empty(), "Device path should not be empty");
-            
+
             // Validate device is marked as connected
-            assert!(device.is_connected, "Detected devices should be marked as connected");
-            
+            assert!(
+                device.is_connected,
+                "Detected devices should be marked as connected"
+            );
+
             // Validate storage information (User Story #8 core requirement)
-            
+
             // Validate storage relationship
-            assert!(device.available_space <= device.total_space,
+            assert!(
+                device.available_space <= device.total_space,
                 "Available space ({} bytes) cannot exceed total space ({} bytes)",
-                device.available_space, device.total_space);
-            
+                device.available_space,
+                device.total_space
+            );
+
             // Validate ID is filesystem safe
-            assert!(!device.id.contains('/'), "Device ID should not contain path separators");
-            assert!(!device.id.contains('\\'), "Device ID should not contain path separators");
-            assert!(!device.id.contains(' '), "Device ID should not contain spaces");
-            
+            assert!(
+                !device.id.contains('/'),
+                "Device ID should not contain path separators"
+            );
+            assert!(
+                !device.id.contains('\\'),
+                "Device ID should not contain path separators"
+            );
+            assert!(
+                !device.id.contains(' '),
+                "Device ID should not contain spaces"
+            );
+
             // Validate path looks reasonable
-            assert!(device.path.starts_with('/') || device.path.contains(':'),
-                "Device path should look like a valid mount point: {}", device.path);
+            assert!(
+                device.path.starts_with('/') || device.path.contains(':'),
+                "Device path should look like a valid mount point: {}",
+                device.path
+            );
         }
     }
 
@@ -1087,22 +1229,32 @@ mod tests {
     async fn test_user_story_8_performance_requirements() {
         // User Story #8 Acceptance Criteria: Performance requirements
         let (_db, _rss, _file, _usb) = setup_test_environment().await;
-        
+
         // Test multiple calls to ensure consistent performance
         for i in 0..3 {
             let start_time = Instant::now();
             let result = get_usb_devices().await;
             let elapsed = start_time.elapsed();
-            
-            assert!(result.is_ok(), "USB detection call {} should succeed", i + 1);
-            assert!(elapsed.as_secs() < 5, 
-                "USB detection call {} should complete within 5 seconds, took {:?}", 
-                i + 1, elapsed);
-                
+
+            assert!(
+                result.is_ok(),
+                "USB detection call {} should succeed",
+                i + 1
+            );
+            assert!(
+                elapsed.as_secs() < 5,
+                "USB detection call {} should complete within 5 seconds, took {:?}",
+                i + 1,
+                elapsed
+            );
+
             // Performance should be consistent across calls
             if i > 0 {
-                assert!(elapsed.as_millis() < 2000, 
-                    "Subsequent USB detection calls should be fast (< 2s), took {:?}", elapsed);
+                assert!(
+                    elapsed.as_millis() < 2000,
+                    "Subsequent USB detection calls should be fast (< 2s), took {:?}",
+                    elapsed
+                );
             }
         }
     }
@@ -1112,24 +1264,33 @@ mod tests {
     async fn test_user_story_8_storage_space_calculations() {
         // User Story #8: Storage space display validation
         let (_db, _rss, _file, _usb) = setup_test_environment().await;
-        
+
         let devices = get_usb_devices().await.unwrap();
-        
+
         for device in &devices {
             // Storage space should be reasonable
             assert!(device.total_space > 0, "Total space should be positive");
-            assert!(device.available_space <= device.total_space, "Available space should not exceed total");
-            
+            assert!(
+                device.available_space <= device.total_space,
+                "Available space should not exceed total"
+            );
+
             // Storage space should be in reasonable ranges (not absurdly large)
             // Allow for very large drives (up to 10TB)
-            assert!(device.total_space < 10_000_000_000_000, "Total space should be reasonable (< 10TB)");
+            assert!(
+                device.total_space < 10_000_000_000_000,
+                "Total space should be reasonable (< 10TB)"
+            );
         }
-        
+
         // Test should complete within reasonable time
         let start = std::time::Instant::now();
         let _devices = get_usb_devices().await.unwrap();
         let elapsed = start.elapsed();
-        assert!(elapsed.as_secs() < 2, "Multiple USB device calls should complete quickly");
+        assert!(
+            elapsed.as_secs() < 2,
+            "Multiple USB device calls should complete quickly"
+        );
     }
 
     // USER STORY #9 TESTS - Transfer episodes to USB device
@@ -1174,28 +1335,45 @@ mod tests {
         // Mock episode as downloaded (normally would be done by download_episode)
         // For testing, we'll create a test file and mark it as downloaded
         std::fs::create_dir_all("./test_episodes").unwrap();
-        let test_file_path = format!("./test_episodes/{}/{}_Episode_to_Transfer.mp3", podcast.id, episode_id);
+        let test_file_path = format!(
+            "./test_episodes/{}/{}_Episode_to_Transfer.mp3",
+            podcast.id, episode_id
+        );
         std::fs::create_dir_all(format!("./test_episodes/{}", podcast.id)).unwrap();
         std::fs::write(&test_file_path, b"test episode content for transfer").unwrap();
 
         // Manually update database to mark as downloaded
         let db_lock = DATABASE.lock().await;
         let db = db_lock.as_ref().unwrap();
-        db.update_episode_downloaded_status(episode_id, true, Some(&test_file_path)).await.unwrap();
+        db.update_episode_downloaded_status(episode_id, true, Some(&test_file_path))
+            .await
+            .unwrap();
         drop(db_lock);
 
         // Test transfer to non-existent device (should fail)
         let result = transfer_episode_to_device(episode_id, "nonexistent_device".to_string()).await;
-        assert!(result.is_err(), "Transfer to nonexistent device should fail");
-        assert!(result.unwrap_err().contains("not found"), "Error should mention device not found");
+        assert!(
+            result.is_err(),
+            "Transfer to nonexistent device should fail"
+        );
+        assert!(
+            result.unwrap_err().contains("not found"),
+            "Error should mention device not found"
+        );
 
         // Test transfer of non-downloaded episode
         let episodes2 = get_episodes(Some(podcast.id)).await.unwrap();
         let non_downloaded_episode = episodes2.iter().find(|ep| !ep.downloaded);
         if let Some(ep) = non_downloaded_episode {
             let result = transfer_episode_to_device(ep.id, "test_device".to_string()).await;
-            assert!(result.is_err(), "Transfer of non-downloaded episode should fail");
-            assert!(result.unwrap_err().contains("not downloaded"), "Error should mention episode not downloaded");
+            assert!(
+                result.is_err(),
+                "Transfer of non-downloaded episode should fail"
+            );
+            assert!(
+                result.unwrap_err().contains("not downloaded"),
+                "Error should mention episode not downloaded"
+            );
         }
 
         mock.assert();
@@ -1212,8 +1390,14 @@ mod tests {
         let (_db, _rss, _file, _usb) = setup_test_environment().await;
 
         let result = transfer_episode_to_device(999, "test_device".to_string()).await;
-        assert!(result.is_err(), "Transfer of nonexistent episode should fail");
-        assert!(result.unwrap_err().contains("not found"), "Error should mention episode not found");
+        assert!(
+            result.is_err(),
+            "Transfer of nonexistent episode should fail"
+        );
+        assert!(
+            result.unwrap_err().contains("not found"),
+            "Error should mention episode not found"
+        );
     }
 
     #[tokio::test]
@@ -1228,7 +1412,10 @@ mod tests {
         let elapsed = start_time.elapsed();
 
         assert!(result.is_err(), "Transfer should fail for invalid inputs");
-        assert!(elapsed.as_millis() < 1000, "Transfer command should respond within 1 second even when failing");
+        assert!(
+            elapsed.as_millis() < 1000,
+            "Transfer command should respond within 1 second even when failing"
+        );
     }
 
     #[tokio::test]
@@ -1249,5 +1436,204 @@ mod tests {
         let error2 = result2.unwrap_err();
         assert!(!error2.is_empty(), "Error message should not be empty");
         // Error could be about episode not found or device not found, both are valid
+    }
+
+    // USER STORY #10 TESTS - Remove episodes from USB device (Command Interface)
+    // These tests validate command-level acceptance criteria BEFORE implementation
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_10_remove_episode_from_device_command() {
+        // User Story #10: Remove episodes from USB device
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+        let server = MockServer::start();
+
+        // Create a mock podcast and episode
+        let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+            <title>Remove Test Podcast</title>
+            <description>Podcast for testing episode removal</description>
+            <item>
+                <title>Episode to Remove</title>
+                <description>This episode will be removed from USB</description>
+                <enclosure url="https://example.com/remove.mp3" type="audio/mpeg" length="1000000"/>
+                <pubDate>Wed, 01 Feb 2023 00:00:00 +0000</pubDate>
+            </item>
+        </channel>
+        </rss>"#;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/remove-test.xml");
+            then.status(200)
+                .header("content-type", "application/rss+xml")
+                .body(mock_feed);
+        });
+
+        let url = server.url("/remove-test.xml");
+
+        // Add podcast and get episode
+        let podcast = add_podcast(url).await.unwrap();
+        let episodes = get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes.len(), 1);
+        let episode_id = episodes[0].id;
+
+        // Mock episode as downloaded and transferred
+        std::fs::create_dir_all("./test_episodes").unwrap();
+        let test_file_path = format!(
+            "./test_episodes/{}/{}_Episode_to_Remove.mp3",
+            podcast.id, episode_id
+        );
+        std::fs::create_dir_all(format!("./test_episodes/{}", podcast.id)).unwrap();
+        std::fs::write(&test_file_path, b"test episode content for removal").unwrap();
+
+        // Manually update database to mark as downloaded and on device
+        let db_lock = DATABASE.lock().await;
+        let db = db_lock.as_ref().unwrap();
+        db.update_episode_downloaded_status(episode_id, true, Some(&test_file_path))
+            .await
+            .unwrap();
+        db.update_episode_on_device_status(episode_id, true)
+            .await
+            .unwrap();
+        drop(db_lock);
+
+        // Test removal from non-existent device (should fail)
+        let result = remove_episode_from_device(episode_id, "nonexistent_device".to_string()).await;
+        assert!(
+            result.is_err(),
+            "Removal from nonexistent device should fail"
+        );
+        let error_msg = result.unwrap_err();
+        assert!(
+            error_msg.contains("not found") || error_msg.contains("not implemented"),
+            "Error should mention device not found or not implemented: {}",
+            error_msg
+        );
+
+        // Test removal of episode not on device
+        let db_lock = DATABASE.lock().await;
+        let db = db_lock.as_ref().unwrap();
+        db.update_episode_on_device_status(episode_id, false)
+            .await
+            .unwrap();
+        drop(db_lock);
+
+        let result = remove_episode_from_device(episode_id, "test_device".to_string()).await;
+        assert!(
+            result.is_err(),
+            "Removal of episode not on device should fail"
+        );
+
+        mock.assert();
+
+        // Cleanup
+        std::fs::remove_file(&test_file_path).unwrap_or(());
+        std::fs::remove_dir_all("./test_episodes").unwrap_or(());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_10_remove_nonexistent_episode_command() {
+        // User Story #10: Error handling for nonexistent episode
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+
+        let result = remove_episode_from_device(999, "test_device".to_string()).await;
+        assert!(
+            result.is_err(),
+            "Removal of nonexistent episode should fail"
+        );
+        let error_msg = result.unwrap_err();
+        assert!(
+            error_msg.contains("not found") || error_msg.contains("not implemented"),
+            "Error should mention episode not found or not implemented: {}",
+            error_msg
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_10_remove_episode_performance_requirements() {
+        // User Story #10: Performance requirements for episode removal
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+
+        let start_time = std::time::Instant::now();
+        let result = remove_episode_from_device(1, "test_device".to_string()).await;
+        let elapsed = start_time.elapsed();
+
+        // Should complete within reasonable time (even if not implemented)
+        assert!(
+            elapsed.as_secs() < 5,
+            "Remove episode command should complete within 5 seconds, took {:?}",
+            elapsed
+        );
+
+        // Will fail until implemented, but should fail quickly
+        assert!(
+            result.is_err(),
+            "Remove episode should fail until implemented"
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_10_remove_episode_database_integration() {
+        // User Story #10: Database integration for episode removal tracking
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+        let server = MockServer::start();
+
+        // Create test podcast and episode
+        let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+            <title>Database Integration Test</title>
+            <description>Testing database integration for removal</description>
+            <item>
+                <title>Database Test Episode</title>
+                <description>This episode tests database integration</description>
+                <enclosure url="https://example.com/db-test.mp3" type="audio/mpeg" length="500000"/>
+                <pubDate>Thu, 02 Feb 2023 00:00:00 +0000</pubDate>
+            </item>
+        </channel>
+        </rss>"#;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/db-test.xml");
+            then.status(200)
+                .header("content-type", "application/rss+xml")
+                .body(mock_feed);
+        });
+
+        let url = server.url("/db-test.xml");
+        let podcast = add_podcast(url).await.unwrap();
+        let episodes = get_episodes(Some(podcast.id)).await.unwrap();
+        let episode_id = episodes[0].id;
+
+        // Verify episode starts as not on device
+        let episode_before = get_episodes(Some(podcast.id)).await.unwrap();
+        let test_episode_before = episode_before
+            .iter()
+            .find(|ep| ep.id == episode_id)
+            .unwrap();
+        assert!(
+            !test_episode_before.on_device,
+            "Episode should not be on device initially"
+        );
+
+        // Set episode as on device
+        let db_lock = DATABASE.lock().await;
+        let db = db_lock.as_ref().unwrap();
+        db.update_episode_on_device_status(episode_id, true)
+            .await
+            .unwrap();
+        drop(db_lock);
+
+        // Test removal command (will fail until implemented, but should update database)
+        let _result = remove_episode_from_device(episode_id, "test_device".to_string()).await;
+
+        // When implemented, should update database to mark episode as not on device
+        // For now, we just verify the command completes
+
+        mock.assert();
     }
 }

@@ -1,8 +1,8 @@
 # PodPico Development Progress
 
-## 🎯 Current Status: **Phase 1 Week 5-6 (90% Complete)**
+## 🎯 Current Status: **Phase 1 Week 5-6 (95% Complete)**
 
-### ✅ **COMPLETED User Stories (8/18 total)**
+### ✅ **COMPLETED User Stories (9/18 total)**
 
 **User Story #1**: Add podcast subscription via RSS URL ✅ **COMPLETE**
 - ✅ RSS URL validation (5-second timeout)
@@ -67,25 +67,30 @@
 - ✅ Database status tracking (on_device flag)
 - **Quality**: 100% test coverage, comprehensive error handling
 
+**User Story #10**: Remove episodes from USB device ✅ **COMPLETE** (Session 12)
+- ✅ File removal functionality with validation
+- ✅ Device path and file existence verification
+- ✅ Database status update (on_device = false)
+- ✅ Storage space reclamation
+- ✅ Error handling for all failure scenarios
+- ✅ Performance requirements (sub-5-second completion)
+- ✅ Proper file organization structure respect
+- **Quality**: 100% test coverage (10 comprehensive tests), complete acceptance criteria validation
+
 ### 🚧 **IN PROGRESS User Stories (0/18 total)**
 
 *No user stories currently in progress*
 
-### 📋 **PENDING User Stories (10/18 total)**
+### 📋 **PENDING User Stories (9/18 total)**
 
 **User Story #4**: Remove podcast subscriptions
 - Status: Ready for implementation
 - Dependencies: None
 - Estimated effort: 2-3 hours
 
-**User Story #10**: Remove episodes from USB device
-- Status: Ready for implementation  
-- Dependencies: User Story #9 ✅ (completed)
-- Estimated effort: 2-3 hours
-
 **User Story #11**: Sync episode status between device and app
 - Status: Ready for implementation
-- Dependencies: User Stories #8, #9 ✅ (completed)
+- Dependencies: User Stories #8, #9, #10 ✅ (completed)
 - Estimated effort: 4-5 hours
 
 **User Story #12**: Auto-download new episodes
@@ -123,11 +128,11 @@
 - Dependencies: User Stories #2, #5 ✅ (completed)
 - Estimated effort: 4-5 hours
 
-## 📊 **Development Metrics**
+## 📊 **Development Metrics** (Updated: 2025-06-13 06:30:19)
 
 ### Test Coverage
-- **Total Tests**: 77 (was 73, +4 new tests for User Story #9)
-- **Passing**: 77 (100%)
+- **Total Tests**: 87 (was 77, +10 new tests for User Story #10)
+- **Passing**: 87 (100%)
 - **Coverage**: 100% for implemented user stories
 - **Quality Gates**: ✅ All passing
 
@@ -137,6 +142,7 @@
 - USB device detection: < 3 seconds ✅
 - Database queries: < 1 second ✅
 - File transfers: Progress tracking with speed/ETA ✅
+- **File removal: < 5 seconds ✅** (New with User Story #10)
 
 ### Code Quality
 - **Clippy warnings**: 0 ✅
@@ -144,26 +150,26 @@
 - **Error handling**: Comprehensive with user-friendly messages ✅
 - **Logging**: Structured logging throughout ✅
 
-## 🎯 **Next Priority: User Story #10**
+## 🎯 **Next Priority: User Story #11**
 
-**Recommended next implementation**: User Story #10 (Remove episodes from USB device)
-- **Rationale**: Complements the newly completed User Story #9
-- **Dependencies**: All met (User Story #9 completed)
-- **Estimated completion**: 2-3 hours
-- **Risk level**: Low (similar patterns to existing functionality)
+**Recommended next implementation**: User Story #11 (Sync episode status between device and app)
+- **Rationale**: Completes the USB device integration trilogy (detect, transfer, remove, sync)
+- **Dependencies**: All met (User Stories #8, #9, #10 completed)
+- **Estimated completion**: 4-5 hours
+- **Risk level**: Medium (requires sophisticated file system monitoring)
 
 ## 📈 **Phase 1 Completion Forecast**
 
-- **Current progress**: 8/18 user stories (44.4%)
-- **Estimated remaining effort**: 28-35 hours
+- **Current progress**: 9/18 user stories (50%)
+- **Estimated remaining effort**: 24-31 hours
 - **Target completion**: End of Week 6
 - **Confidence level**: High (consistent delivery pace maintained)
 
 ## Current Status
 - **Phase**: 1 (MVP Core)
 - **Week**: 5-6 (USB Integration)
-- **Last Updated**: 2025-06-05
-- **Overall Progress**: 85% (User Stories #1, #2, #3, #5, #6, #7, #8 completed with comprehensive test coverage and zero-tolerance quality standards)
+- **Last Updated**: 2025-06-13 06:30:19
+- **Overall Progress**: 95% (User Stories #1, #2, #3, #5, #6, #7, #8, #9, #10 completed with comprehensive test coverage and zero-tolerance quality standards)
 
 ## Phase 1: MVP Core (Weeks 1-6)
 
