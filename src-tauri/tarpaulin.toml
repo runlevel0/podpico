@@ -1,0 +1,58 @@
+[tool.tarpaulin.podpico]
+# Coverage configuration for PodPico project
+exclude = [
+    "tests/*",
+    "src/main.rs",  # Entry point - minimal logic to test
+    "src/error.rs", # Simple error definitions
+]
+
+# Output formats - HTML for detailed view, Xml for CI/CD
+out = ["Html", "Xml", "Stdout"]
+
+# Output directory for reports
+output-dir = "coverage"
+
+# Timeout in seconds (generous for comprehensive testing)
+timeout = 120
+
+# Follow executed lines (better coverage accuracy)
+follow-exec = true
+
+# Don't fail builds on coverage issues - report only
+fail-under = 0
+
+# Target minimum coverage percentage
+target-dir = "target"
+
+# Include all source files in report
+all-features = true
+all-targets = true
+
+# Verbose output for debugging
+verbose = true
+
+# Clean coverage data between runs
+clean = true
+
+# Run doctests as well
+run-types = ["Tests", "Doctests"]
+
+# Ignore panics in coverage (they're expected in error tests)
+ignore-panics = true
+
+# Exclude generated code from coverage
+avoid-cfg-tarpaulin = true
+
+[tool.tarpaulin.ci]
+# Minimal configuration for CI/CD environments
+exclude = [
+    "tests/*",
+    "src/main.rs",
+    "src/error.rs",
+]
+out = ["Xml"]
+output-dir = "coverage"
+target-dir = "target"
+timeout = 60
+all-features = true
+fail-under = 80  # Fail CI if coverage drops below 80% 
