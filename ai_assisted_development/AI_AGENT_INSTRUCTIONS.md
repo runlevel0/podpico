@@ -197,6 +197,19 @@ Before implementing ANY feature:
 - [ ] Refactor while keeping tests green
 - [ ] Add additional tests for edge cases
 
+### Test Naming Quick Reference ⚠️ MANDATORY
+```rust
+// PRIMARY: User Story Tests
+test_user_story_X_[brief_description]()
+test_user_story_X_[specific_acceptance_criteria]()
+test_user_story_X_performance_requirements()
+test_user_story_X_complete_workflow()
+
+// SECONDARY: Component/Error Tests  
+test_[component]_[functionality]()
+test_[component]_[error_condition]()
+```
+
 ## Session Objectives
 Primary objectives (must complete):
 - [ ] [Specific, measurable objective 1 - reference user story #X]
@@ -292,6 +305,114 @@ echo "Documentation updated: $DOC_UPDATE_TIMESTAMP"
 ```
 
 ### Test-Driven Development (MANDATORY)
+
+#### Test Function Naming Conventions (MANDATORY)
+**ALL test functions MUST follow these naming patterns for traceability:**
+
+📋 **QUICK REFERENCE**: See `ai_assisted_development/TEST_NAMING_CONVENTIONS.md` for comprehensive examples and decision flowchart.
+
+```rust
+// PRIMARY PATTERN: User Story Acceptance Criteria Tests
+#[tokio::test]
+async fn test_user_story_X_[brief_description]() {
+    // Tests core acceptance criteria for User Story #X
+}
+
+#[tokio::test] 
+async fn test_user_story_X_[specific_acceptance_criteria]() {
+    // Tests specific acceptance criteria requirement
+}
+
+// EXAMPLES FROM EXISTING CODEBASE:
+test_user_story_1_add_podcast_command()                    // Core functionality
+test_user_story_1_acceptance_criteria_complete()           // Full acceptance criteria
+test_user_story_3_download_progress_tracking()            // Specific requirement
+test_user_story_8_performance_requirements()              // Performance criteria
+test_user_story_10_remove_episode_database_integration()  // Integration aspect
+
+// SECONDARY PATTERNS: Component and Error Testing
+#[tokio::test]
+async fn test_[component]_[functionality]() {
+    // Component-specific functionality tests
+}
+
+#[tokio::test]
+async fn test_[component]_[error_condition]() {
+    // Error handling and edge case tests
+}
+
+// EXAMPLES:
+test_database_initialization()                 // Component setup
+test_add_podcast_invalid_url()                // Error condition
+test_file_manager_disk_space_check()          // Component functionality
+test_usb_manager_nonexistent_device()         // Error handling
+
+// PERFORMANCE TESTING PATTERN:
+#[tokio::test]
+async fn test_user_story_X_performance_requirements() {
+    // Validates timing requirements from acceptance criteria
+    let start_time = std::time::Instant::now();
+    // ... test implementation
+    let elapsed = start_time.elapsed();
+    assert!(elapsed < Duration::from_secs(5), "Should complete within 5 seconds");
+}
+
+// INTEGRATION TESTING PATTERN:
+#[tokio::test]
+async fn test_user_story_X_complete_workflow() {
+    // End-to-end testing of entire user story workflow
+}
+```
+
+#### Test Organization Structure (MANDATORY)
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    // GROUP 1: User Story Acceptance Criteria Tests (PRIORITY)
+    #[tokio::test]
+    async fn test_user_story_X_[primary_acceptance_criteria]() { }
+    
+    #[tokio::test] 
+    async fn test_user_story_X_[secondary_acceptance_criteria]() { }
+    
+    #[tokio::test]
+    async fn test_user_story_X_performance_requirements() { }
+    
+    // GROUP 2: Component Functionality Tests
+    #[tokio::test]
+    async fn test_[component]_[core_functionality]() { }
+    
+    // GROUP 3: Error Handling and Edge Cases
+    #[tokio::test]
+    async fn test_[component]_[error_condition]() { }
+    
+    // GROUP 4: Integration and Workflow Tests
+    #[tokio::test]
+    async fn test_user_story_X_complete_workflow() { }
+}
+```
+
+#### Test Documentation Requirements (MANDATORY)
+```rust
+#[tokio::test]
+async fn test_user_story_3_download_progress_tracking() {
+    // PURPOSE: Validates User Story #3 Acceptance Criteria
+    // CRITERIA: "User can see download progress percentage during episode download"
+    // TIMING: Progress updates must be received within 1 second
+    // ERROR CASES: Network interruption, invalid URLs, insufficient disk space
+    
+    let episode_id = create_test_episode().await;
+    let mut progress_updates = Vec::new();
+    
+    // Test implementation...
+    
+    // ASSERTIONS: Link back to acceptance criteria
+    assert!(!progress_updates.is_empty(), "User Story #3: Progress updates required");
+    assert!(progress_updates.last().unwrap() >= &100.0, "User Story #3: Must reach 100%");
+}
+```
 
 #### Always Write Tests First
 For every user story implementation:
