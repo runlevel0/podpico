@@ -57,6 +57,11 @@ pub fn run() {
             commands::get_usb_devices,
             commands::transfer_episode_to_device,
             commands::remove_episode_from_device,
+            // User Story #11: Episode device status management commands
+            commands::sync_episode_device_status,
+            commands::get_device_episodes_by_podcast,
+            commands::get_device_status_indicators,
+            commands::verify_episode_status_consistency,
             // Configuration commands
             commands::get_app_config,
             commands::update_app_config,

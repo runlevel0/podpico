@@ -360,7 +360,8 @@ impl DatabaseManager {
     pub async fn get_episodes_on_device(&self) -> Result<Vec<Episode>, PodPicoError> {
         log::info!("Getting episodes marked as on device (User Story #11)");
 
-        let episodes = sqlx::query_as::<_, Episode>(r#"
+        let episodes = sqlx::query_as::<_, Episode>(
+            r#"
             SELECT 
                 e.id, e.podcast_id, p.name as podcast_name, e.title, e.description, 
                 e.episode_url, e.published_date, e.duration, e.file_size, 
@@ -369,7 +370,8 @@ impl DatabaseManager {
             JOIN podcasts p ON e.podcast_id = p.id
             WHERE e.on_device = true
             ORDER BY p.name, e.published_date DESC
-        "#)
+        "#,
+        )
         .fetch_all(&self.pool)
         .await?;
 
@@ -381,11 +383,13 @@ impl DatabaseManager {
     pub async fn get_on_device_episode_filenames(&self) -> Result<Vec<String>, PodPicoError> {
         log::info!("Getting on-device episode filenames for consistency check (User Story #11)");
 
-        let rows: Vec<(Option<String>,)> = sqlx::query_as(r#"
+        let rows: Vec<(Option<String>,)> = sqlx::query_as(
+            r#"
             SELECT local_file_path 
             FROM episodes 
             WHERE on_device = true AND local_file_path IS NOT NULL
-        "#)
+        "#,
+        )
         .fetch_all(&self.pool)
         .await?;
 
