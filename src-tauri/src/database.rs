@@ -355,6 +355,56 @@ impl DatabaseManager {
     }
 
     #[allow(clippy::too_many_arguments)]
+    /// User Story #11: Get episodes that are marked as on device
+    /// Returns episodes with on_device = true for sync functionality
+    pub async fn get_episodes_on_device(&self) -> Result<Vec<Episode>, PodPicoError> {
+        log::info!("Getting episodes marked as on device (User Story #11)");
+
+        let episodes = sqlx::query_as::<_, Episode>(r#"
+            SELECT 
+                e.id, e.podcast_id, p.name as podcast_name, e.title, e.description, 
+                e.episode_url, e.published_date, e.duration, e.file_size, 
+                e.local_file_path, e.status, e.downloaded, e.on_device
+            FROM episodes e
+            JOIN podcasts p ON e.podcast_id = p.id
+            WHERE e.on_device = true
+            ORDER BY p.name, e.published_date DESC
+        "#)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(episodes)
+    }
+
+    /// User Story #11: Get episode filenames from local_file_path for episodes marked as on device
+    /// Returns the actual filenames that should be on the device
+    pub async fn get_on_device_episode_filenames(&self) -> Result<Vec<String>, PodPicoError> {
+        log::info!("Getting on-device episode filenames for consistency check (User Story #11)");
+
+        let rows: Vec<(Option<String>,)> = sqlx::query_as(r#"
+            SELECT local_file_path 
+            FROM episodes 
+            WHERE on_device = true AND local_file_path IS NOT NULL
+        "#)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let filenames = rows
+            .into_iter()
+            .filter_map(|(local_file_path,)| {
+                local_file_path.and_then(|path| {
+                    std::path::Path::new(&path)
+                        .file_name()
+                        .and_then(|name| name.to_str())
+                        .map(|s| s.to_string())
+                })
+            })
+            .collect();
+
+        Ok(filenames)
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_episode(
         &self,
         podcast_id: i64,
