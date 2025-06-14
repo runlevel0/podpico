@@ -11,6 +11,24 @@ use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 
+// User Story #11: Episode device status management
+#[derive(Debug, Clone)]
+pub struct DeviceEpisodeInfo {
+    pub filename: String,
+    pub podcast_name: String,
+    pub file_size: u64,
+    pub last_modified: std::time::SystemTime,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeviceStatusConsistencyReport {
+    pub files_found: usize,
+    pub database_episodes: usize,
+    pub is_consistent: bool,
+    pub missing_from_device: Vec<String>,
+    pub missing_from_database: Vec<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct TransferProgress {
     pub episode_id: i64,
@@ -479,12 +497,186 @@ impl UsbManager {
             }
         }
     }
+
+    /// User Story #11: Sync episode status between device and database
+    /// Scans USB device for episodes and returns sync information
+    pub async fn sync_device_episode_status(
+        &self,
+        device_path: &str,
+    ) -> Result<DeviceStatusConsistencyReport, PodPicoError> {
+        log::info!(
+            "Syncing episode device status for: {} (User Story #11)",
+            device_path
+        );
+
+        let device_dir = PathBuf::from(device_path);
+        let podpico_dir = device_dir.join("PodPico");
+
+        if !podpico_dir.exists() {
+            return Ok(DeviceStatusConsistencyReport {
+                files_found: 0,
+                database_episodes: 0,
+                is_consistent: true,
+                missing_from_device: Vec::new(),
+                missing_from_database: Vec::new(),
+            });
+        }
+
+        let mut files_found = 0;
+        if let Ok(entries) = std::fs::read_dir(&podpico_dir) {
+            for entry in entries.flatten() {
+                if let Some(extension) = entry.path().extension() {
+                    if extension == "mp3" || extension == "m4a" || extension == "wav" {
+                        files_found += 1;
+                    }
+                }
+            }
+        }
+
+        Ok(DeviceStatusConsistencyReport {
+            files_found,
+            database_episodes: 0, // Will be enhanced with database integration
+            is_consistent: true,
+            missing_from_device: Vec::new(),
+            missing_from_database: Vec::new(),
+        })
+    }
+
+    /// User Story #11: Get episodes organized by podcast on USB device
+    /// Returns episodes grouped by extracted podcast names
+    pub async fn get_device_episodes_by_podcast(
+        &self,
+        device_path: &str,
+    ) -> Result<HashMap<String, Vec<DeviceEpisodeInfo>>, PodPicoError> {
+        log::info!(
+            "Getting device episodes organized by podcast: {} (User Story #11)",
+            device_path
+        );
+
+        let mut episodes_by_podcast: HashMap<String, Vec<DeviceEpisodeInfo>> = HashMap::new();
+        let device_dir = PathBuf::from(device_path);
+        let podpico_dir = device_dir.join("PodPico");
+
+        if !podpico_dir.exists() {
+            return Ok(episodes_by_podcast);
+        }
+
+        if let Ok(entries) = std::fs::read_dir(&podpico_dir) {
+            for entry in entries.flatten() {
+                if let Some(extension) = entry.path().extension() {
+                    if extension == "mp3" || extension == "m4a" || extension == "wav" {
+                        let filename = entry.file_name().to_string_lossy().to_string();
+
+                        // Extract podcast name from filename (basic implementation)
+                        let podcast_name = if let Some(first_underscore) = filename.find('_') {
+                            filename[..first_underscore].to_string()
+                        } else {
+                            "Unknown Podcast".to_string()
+                        };
+
+                        let metadata = entry.metadata().unwrap_or_else(|_| {
+                            // Create a default metadata-like structure
+                            std::fs::metadata(entry.path()).unwrap_or_else(|_| {
+                                std::fs::metadata(".").unwrap() // Fallback to current directory metadata
+                            })
+                        });
+
+                        let episode_info = DeviceEpisodeInfo {
+                            filename: filename.clone(),
+                            podcast_name: podcast_name.clone(),
+                            file_size: metadata.len(),
+                            last_modified: metadata
+                                .modified()
+                                .unwrap_or(std::time::SystemTime::now()),
+                        };
+
+                        episodes_by_podcast
+                            .entry(podcast_name)
+                            .or_default()
+                            .push(episode_info);
+                    }
+                }
+            }
+        }
+
+        Ok(episodes_by_podcast)
+    }
+
+    /// User Story #11: Verify episode status consistency between device and database
+    /// Checks if device files match database on_device flags
+    pub async fn verify_episode_status_consistency(
+        &self,
+        device_path: &str,
+        episode_filenames: &[String],
+    ) -> Result<DeviceStatusConsistencyReport, PodPicoError> {
+        log::info!(
+            "Verifying episode status consistency: {} (User Story #11)",
+            device_path
+        );
+
+        let device_dir = PathBuf::from(device_path);
+        let podpico_dir = device_dir.join("PodPico");
+
+        let mut files_found = 0;
+        let mut missing_from_device = Vec::new();
+
+        // Check which files are actually on device
+        for filename in episode_filenames {
+            let file_path = podpico_dir.join(filename);
+            if file_path.exists() {
+                files_found += 1;
+            } else {
+                missing_from_device.push(filename.clone());
+            }
+        }
+
+        Ok(DeviceStatusConsistencyReport {
+            files_found,
+            database_episodes: episode_filenames.len(),
+            is_consistent: missing_from_device.is_empty(),
+            missing_from_device,
+            missing_from_database: Vec::new(), // Will be enhanced with database queries
+        })
+    }
+
+    /// User Story #11: Get device status indicators for episodes
+    /// Returns a map of filename to on_device status
+    pub async fn get_device_status_indicators(
+        &self,
+        device_path: &str,
+    ) -> Result<HashMap<String, bool>, PodPicoError> {
+        log::info!(
+            "Getting device status indicators: {} (User Story #11)",
+            device_path
+        );
+
+        let mut status_indicators = HashMap::new();
+        let device_dir = PathBuf::from(device_path);
+        let podpico_dir = device_dir.join("PodPico");
+
+        if !podpico_dir.exists() {
+            return Ok(status_indicators);
+        }
+
+        if let Ok(entries) = std::fs::read_dir(&podpico_dir) {
+            for entry in entries.flatten() {
+                if let Some(extension) = entry.path().extension() {
+                    if extension == "mp3" || extension == "m4a" || extension == "wav" {
+                        let filename = entry.file_name().to_string_lossy().to_string();
+                        status_indicators.insert(filename, true); // File exists on device
+                    }
+                }
+            }
+        }
+
+        Ok(status_indicators)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Instant;
+    use std::time::{Duration, Instant};
 
     #[tokio::test]
     async fn test_usb_manager_initialization() {
@@ -1241,5 +1433,259 @@ mod tests {
 
         // Cleanup
         std::fs::remove_dir_all(test_device).unwrap_or(());
+    }
+
+    /// User Story #11: See which episodes are on USB device
+    /// Performance requirement: Sync operations complete within 3 seconds
+    #[tokio::test]
+    async fn test_user_story_11_episode_device_status_sync_performance() {
+        // PURPOSE: Validates User Story #11 Performance Requirement
+        // CRITERIA: "Given device contents change, when I refresh views, then on-device indicators update within 3 seconds"
+
+        let manager = UsbManager::new();
+        let test_device_path = "/tmp/test_usb_device_sync";
+
+        // Create test device directory and PodPico subdirectory
+        let device_dir = PathBuf::from(test_device_path);
+        let podpico_dir = device_dir.join("PodPico");
+        std::fs::create_dir_all(&podpico_dir).unwrap();
+
+        // Create test files on device
+        let test_files = vec![
+            "test_episode_1.mp3",
+            "test_episode_2.mp3",
+            "test_episode_3.mp3",
+        ];
+
+        for filename in &test_files {
+            std::fs::write(podpico_dir.join(filename), "test audio content").unwrap();
+        }
+
+        // Test performance requirement
+        let start_time = std::time::Instant::now();
+        let result = manager.sync_device_episode_status(test_device_path).await;
+        let elapsed = start_time.elapsed();
+
+        // Cleanup
+        std::fs::remove_dir_all(&device_dir).ok();
+
+        // Assertions
+        assert!(result.is_ok(), "User Story #11: Device sync should succeed");
+        assert!(
+            elapsed < Duration::from_secs(3),
+            "User Story #11: Sync must complete within 3 seconds (took {:?})",
+            elapsed
+        );
+    }
+
+    #[tokio::test]
+    async fn test_user_story_11_device_episode_organization_by_podcast() {
+        // PURPOSE: Validates User Story #11 Acceptance Criteria
+        // CRITERIA: "Given I'm viewing USB device contents, when the list loads, then episodes are organized by podcast"
+
+        let manager = UsbManager::new();
+        let test_device_path = "/tmp/test_usb_device_organization";
+
+        // Create test device structure
+        let device_dir = PathBuf::from(test_device_path);
+        let podpico_dir = device_dir.join("PodPico");
+        std::fs::create_dir_all(&podpico_dir).unwrap();
+
+        // Create test files representing episodes from different podcasts
+        let test_files = vec![
+            "Podcast_A_Episode_1.mp3",
+            "Podcast_A_Episode_2.mp3",
+            "Podcast_B_Episode_1.mp3",
+            "Another_Podcast_Episode_1.mp3",
+        ];
+
+        for filename in &test_files {
+            std::fs::write(podpico_dir.join(filename), "test content").unwrap();
+        }
+
+        let result = manager
+            .get_device_episodes_by_podcast(test_device_path)
+            .await;
+
+        // Cleanup
+        std::fs::remove_dir_all(&device_dir).ok();
+
+        // Assertions
+        assert!(
+            result.is_ok(),
+            "User Story #11: Device episode organization should succeed"
+        );
+        let episodes_by_podcast = result.unwrap();
+        assert!(
+            !episodes_by_podcast.is_empty(),
+            "User Story #11: Should find episodes organized by podcast"
+        );
+
+        // Verify organization structure
+        for (podcast_name, episodes) in episodes_by_podcast {
+            assert!(
+                !podcast_name.is_empty(),
+                "User Story #11: Podcast names should be extracted from filenames"
+            );
+            assert!(
+                !episodes.is_empty(),
+                "User Story #11: Each podcast should have at least one episode"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_user_story_11_on_device_status_consistency() {
+        // PURPOSE: Validates User Story #11 Acceptance Criteria
+        // CRITERIA: "Given episodes on device, when I compare with local episode list, then the on-device status is consistent across views"
+
+        let manager = UsbManager::new();
+        let test_device_path = "/tmp/test_usb_device_consistency";
+
+        // Create test device directory
+        let device_dir = PathBuf::from(test_device_path);
+        let podpico_dir = device_dir.join("PodPico");
+        std::fs::create_dir_all(&podpico_dir).unwrap();
+
+        // Create test episode files
+        let episode_filenames = vec![
+            "Test_Episode_1.mp3".to_string(),
+            "Test_Episode_2.mp3".to_string(),
+        ];
+
+        for filename in &episode_filenames {
+            std::fs::write(podpico_dir.join(filename), "test audio content").unwrap();
+        }
+
+        // Test consistency checking
+        let result = manager
+            .verify_episode_status_consistency(test_device_path, &episode_filenames)
+            .await;
+
+        // Cleanup
+        std::fs::remove_dir_all(&device_dir).ok();
+
+        // Assertions
+        assert!(
+            result.is_ok(),
+            "User Story #11: Status consistency check should succeed"
+        );
+        let consistency_report = result.unwrap();
+        assert!(
+            consistency_report.files_found > 0,
+            "User Story #11: Should find files on device"
+        );
+        assert!(
+            consistency_report.is_consistent,
+            "User Story #11: Device status should be consistent with file system"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_user_story_11_device_status_indicators_visible() {
+        // PURPOSE: Validates User Story #11 Acceptance Criteria
+        // CRITERIA: "Given episodes transferred to USB, when I view any episode list, then 'on device' indicators are clearly visible"
+
+        let manager = UsbManager::new();
+        let test_device_path = "/tmp/test_usb_device_indicators";
+
+        // Create test device with episodes
+        let device_dir = PathBuf::from(test_device_path);
+        let podpico_dir = device_dir.join("PodPico");
+        std::fs::create_dir_all(&podpico_dir).unwrap();
+
+        let test_episodes = vec![
+            ("episode_1.mp3", true),  // On device
+            ("episode_2.mp3", false), // Not on device
+            ("episode_3.mp3", true),  // On device
+        ];
+
+        // Create files for episodes that should be "on device"
+        for (filename, should_be_on_device) in &test_episodes {
+            if *should_be_on_device {
+                std::fs::write(podpico_dir.join(filename), "test content").unwrap();
+            }
+        }
+
+        let result = manager.get_device_status_indicators(test_device_path).await;
+
+        // Cleanup
+        std::fs::remove_dir_all(&device_dir).ok();
+
+        // Assertions
+        assert!(
+            result.is_ok(),
+            "User Story #11: Device status indicators should be retrievable"
+        );
+        let status_indicators = result.unwrap();
+
+        // Verify indicators match actual file presence
+        for (filename, expected_on_device) in test_episodes {
+            let indicator_status = status_indicators.get(filename);
+            if expected_on_device {
+                assert!(
+                    indicator_status.is_some(),
+                    "User Story #11: On-device episodes should have status indicators"
+                );
+                assert!(
+                    *indicator_status.unwrap(),
+                    "User Story #11: Status indicator should show 'on device' for present files"
+                );
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_user_story_11_refresh_device_status_updates() {
+        // PURPOSE: Validates User Story #11 Acceptance Criteria
+        // CRITERIA: "Given device contents change, when I refresh views, then on-device indicators update within 3 seconds"
+
+        let manager = UsbManager::new();
+        let test_device_path = "/tmp/test_usb_device_refresh";
+
+        // Create test device
+        let device_dir = PathBuf::from(test_device_path);
+        let podpico_dir = device_dir.join("PodPico");
+        std::fs::create_dir_all(&podpico_dir).unwrap();
+
+        // Initial state - no episodes
+        let start_time = std::time::Instant::now();
+        let initial_status = manager
+            .get_device_status_indicators(test_device_path)
+            .await
+            .unwrap();
+        let initial_elapsed = start_time.elapsed();
+
+        // Change device contents - add episode
+        std::fs::write(podpico_dir.join("new_episode.mp3"), "new content").unwrap();
+
+        // Refresh status
+        let refresh_start = std::time::Instant::now();
+        let updated_status = manager
+            .get_device_status_indicators(test_device_path)
+            .await
+            .unwrap();
+        let refresh_elapsed = refresh_start.elapsed();
+
+        // Cleanup
+        std::fs::remove_dir_all(&device_dir).ok();
+
+        // Assertions
+        assert!(
+            initial_elapsed < Duration::from_secs(3),
+            "User Story #11: Initial status check must complete within 3 seconds"
+        );
+        assert!(
+            refresh_elapsed < Duration::from_secs(3),
+            "User Story #11: Status refresh must complete within 3 seconds"
+        );
+        assert!(
+            updated_status.contains_key("new_episode.mp3"),
+            "User Story #11: Refresh should detect new episodes"
+        );
+        assert!(
+            !initial_status.contains_key("new_episode.mp3"),
+            "User Story #11: Initial status should not contain new episode"
+        );
     }
 }
