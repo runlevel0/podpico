@@ -4,13 +4,15 @@
 
 ### ✅ **COMPLETED User Stories (10/18 total)**
 
-**User Story #1**: Add podcast subscription via RSS URL ✅ **COMPLETE**
+**User Story #1**: Add podcast subscription via RSS URL ✅ **COMPLETE (BACKEND ONLY)**
 - ✅ RSS URL validation (5-second timeout)
 - ✅ Podcast metadata extraction and storage
 - ✅ Episode discovery and database population
 - ✅ Duplicate URL prevention
 - ✅ Error handling with clear messages
-- **Quality**: 100% test coverage, sub-5-second performance
+- **Backend Quality**: 100% test coverage, sub-5-second performance
+- ❌ **Frontend Quality**: No automated tests, no comprehensive UI validation
+- ⚠️ **FULL-STACK STATUS**: INCOMPLETE - Frontend testing framework required
 
 **User Story #2**: View all episodes of specific podcast ✅ **COMPLETE**
 - ✅ Episode list display with metadata
@@ -325,19 +327,26 @@
 ### Not Started ❌
 - **User Stories #16-18**: Future enhancements (batch operations, statistics)
 
-## Next Session Priorities
+## Next Session Priorities (FULL-STACK FOCUS)
 
-### Immediate Next Steps (Session 4)
-1. **Implement User Story #9** - Basic file transfer to USB devices
-2. **Integrate User Story #4** - Remove podcast functionality into UI
-3. **Begin Advanced USB Operations** - User Stories #10-11 (file transfer)
-4. **Test all functionality** - Comprehensive validation
+### CRITICAL BLOCKERS - Must Resolve Before Feature Development
+1. **Implement Frontend Testing Framework** - Jest/Vitest with ≥80% coverage requirement
+2. **Implement Frontend Linting** - ESLint with zero-warning policy
+3. **Retroactive Frontend Testing** - Add tests for all existing UI components
+4. **End-to-End Testing Setup** - Playwright/Cypress for user story validation
 
-### Success Criteria for Next Session
-- User Story #9 fully functional (USB device detection)
-- User Story #4 integrated (remove podcasts from UI)
-- USB file transfer foundation working (User Stories #10-11 beginning)
-- All functionality tested end-to-end
+### Immediate Next Steps (Session 4) - AFTER Quality Framework Setup
+1. **Implement User Story #4 (Full-Stack)** - Remove podcast functionality with comprehensive frontend tests
+2. **User Story #12 (Full-Stack)** - Auto-download new episodes with UI progress indicators and tests
+3. **Quality Framework Integration** - Ensure all new features have full-stack testing
+4. **Performance Validation** - Both backend API performance and frontend UI responsiveness
+
+### Success Criteria for Next Session (FULL-STACK)
+- Frontend testing framework operational with automated coverage reporting
+- Frontend linting enforced with zero-warning policy
+- At least one user story implemented with complete full-stack testing
+- All quality gates passing for both backend and frontend
+- User story acceptance criteria validated through both automated tests AND UI interaction
 
 ## Known Issues and Blockers
 

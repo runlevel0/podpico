@@ -4,7 +4,35 @@ This file tracks all known issues, blockers, and technical debt that need to be 
 
 ## Current Blockers
 
-*No active blockers at this time.*
+### Issue #CRITICAL-1: Frontend Testing Framework Missing ❌ BLOCKS ALL DEVELOPMENT
+- **Category**: Critical Infrastructure
+- **Priority**: CRITICAL 
+- **Module**: Frontend (all components)
+- **Description**: No automated testing framework exists for React/TypeScript frontend code
+- **Impact**: Cannot validate user story acceptance criteria through automated tests
+- **Workaround**: Manual testing only (insufficient for production quality)
+- **Next Steps**: Implement Jest/Vitest with React Testing Library and ≥80% coverage requirement
+- **Assigned Session**: IMMEDIATE (blocks all future feature development)
+
+### Issue #CRITICAL-2: Frontend Quality Standards Not Enforced ❌ BLOCKS ALL DEVELOPMENT  
+- **Category**: Critical Infrastructure
+- **Priority**: CRITICAL
+- **Module**: Frontend (all components)
+- **Description**: No ESLint, TypeScript strict mode, or Prettier configuration enforced
+- **Impact**: Inconsistent code quality, potential runtime errors, poor maintainability
+- **Workaround**: Manual code review only (insufficient)
+- **Next Steps**: Implement ESLint with zero-warning policy, strict TypeScript, automated formatting
+- **Assigned Session**: IMMEDIATE (blocks all future feature development)
+
+### Issue #CRITICAL-3: No End-to-End Testing Framework ❌ BLOCKS USER STORY VALIDATION
+- **Category**: Critical Infrastructure  
+- **Priority**: CRITICAL
+- **Module**: Full-stack integration
+- **Description**: User story acceptance criteria cannot be validated through automated UI testing
+- **Impact**: Cannot ensure user workflows function correctly across updates
+- **Workaround**: Manual UI testing only (insufficient for regression prevention)
+- **Next Steps**: Implement Playwright or Cypress for automated user workflow testing
+- **Assigned Session**: IMMEDIATE (required for user story validation)
 
 ## Known Issues
 
@@ -44,16 +72,35 @@ This file tracks all known issues, blockers, and technical debt that need to be 
 
 ## Technical Debt
 
-### High Priority Debt
-1. **Database Schema Implementation**
-   - **Location**: `src-tauri/src/database.rs`
-   - **Description**: Complete database schema needs to be implemented from design
-   - **Effort**: 1-2 hours
-   - **Blocking**: All podcast management features
+### CRITICAL Priority Debt (BLOCKS ALL DEVELOPMENT)
+1. **Frontend Testing Infrastructure**
+   - **Location**: Frontend (all components)
+   - **Description**: Complete absence of automated testing framework for React/TypeScript code
+   - **Effort**: 8-12 hours initial setup + ongoing test creation
+   - **Blocking**: All user story validation and quality assurance
 
-2. **Error Handling Integration**
-   - **Location**: All backend modules
-   - **Description**: Replace generic errors with specific error types
+2. **Frontend Quality Tooling**
+   - **Location**: Frontend (all components)  
+   - **Description**: No ESLint, TypeScript strict mode, Prettier, or pre-commit hooks
+   - **Effort**: 4-6 hours setup + configuration
+   - **Blocking**: Consistent code quality and maintainability
+
+3. **End-to-End Testing Framework**
+   - **Location**: Full-stack integration
+   - **Description**: No automated user workflow testing capability
+   - **Effort**: 6-8 hours setup + test creation
+   - **Blocking**: User story acceptance criteria validation
+
+### High Priority Debt  
+4. **Backend Testing Gaps**
+   - **Location**: `src-tauri/src/` (all modules)
+   - **Description**: Backend has good coverage but needs comprehensive integration tests
+   - **Effort**: 4-6 hours
+   - **Blocking**: Full-stack quality assurance
+
+5. **Error Handling Integration**
+   - **Location**: All backend modules + frontend error boundaries
+   - **Description**: Replace generic errors with specific error types in both stacks
    - **Effort**: Ongoing during implementation
    - **Blocking**: Proper error reporting to users
 

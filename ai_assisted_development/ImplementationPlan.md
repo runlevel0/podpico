@@ -343,17 +343,226 @@ futures-util = "0.3"
 tauri-build = { version = "1.0", features = [] }
 ```
 
-#### Frontend Dependencies
+#### Frontend Dependencies (COMPREHENSIVE FULL-STACK SETUP)
 ```json
 {
   "devDependencies": {
     "@tauri-apps/cli": "^1.0.0",
-    "vite": "^4.0.0"
+    "vite": "^4.0.0",
+    
+    // Testing Framework
+    "jest": "^29.0.0",
+    "@testing-library/react": "^13.0.0",
+    "@testing-library/jest-dom": "^5.16.0",
+    "@testing-library/user-event": "^14.0.0",
+    "jest-environment-jsdom": "^29.0.0",
+    "jest-axe": "^7.0.0",
+    
+    // Alternative: Vitest (faster, Vite-native)
+    "vitest": "^0.34.0",
+    "@vitest/ui": "^0.34.0",
+    "c8": "^8.0.0",
+    
+    // Linting and Code Quality
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-jsx-a11y": "^6.7.0",
+    "prettier": "^3.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    
+    // End-to-End Testing
+    "@playwright/test": "^1.38.0",
+    // Alternative: "cypress": "^13.0.0"
+    
+    // TypeScript
+    "typescript": "^5.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    
+    // Performance and Visual Testing
+    "@storybook/react": "^7.0.0",
+    "chromatic": "^7.0.0"
   },
   "dependencies": {
-    "@tauri-apps/api": "^1.0.0"
+    "@tauri-apps/api": "^1.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "scripts": {
+    // Development
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    
+    // Testing
+    "test": "jest --coverage",
+    "test:watch": "jest --coverage --watch",
+    "test:ci": "jest --coverage --ci --watchAll=false --coverage-threshold='{\"global\":{\"lines\":80,\"functions\":80,\"branches\":80,\"statements\":80}}'",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    
+    // Quality
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write src/**/*.{ts,tsx,css,json}",
+    "format:check": "prettier --check src/**/*.{ts,tsx,css,json}",
+    
+    // Pre-commit quality gates
+    "quality:check": "npm run type-check && npm run lint && npm run format:check && npm run test:ci",
+    
+    // Tauri integration
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   }
 }
+```
+
+#### Required Configuration Files
+
+**ESLint Configuration (.eslintrc.json)**
+```json
+{
+  "extends": [
+    "eslint:recommended",
+    "@typescript-eslint/recommended",
+    "plugin:react/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:jsx-a11y/recommended",
+    "prettier"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2023,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "plugins": ["@typescript-eslint", "react", "react-hooks", "jsx-a11y"],
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/explicit-function-return-type": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "jsx-a11y/anchor-is-valid": "error"
+  },
+  "settings": {
+    "react": {
+      "version": "detect"
+    }
+  }
+}
+```
+
+**TypeScript Configuration (tsconfig.json)**
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    
+    // Bundler mode
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    
+    // Strict type checking
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    
+    // Testing
+    "types": ["jest", "@testing-library/jest-dom"]
+  },
+  "include": ["src", "**/*.test.ts", "**/*.test.tsx"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
+**Jest Configuration (jest.config.js)**
+```javascript
+module.exports = {
+  testEnvironment: 'jsdom',
+  setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
+  moduleNameMapping: {
+    '^@/(.*)$': '<rootDir>/src/$1'
+  },
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/test/**/*',
+    '!src/main.tsx'
+  ],
+  coverageThreshold: {
+    global: {
+      lines: 80,
+      functions: 80,
+      branches: 80,
+      statements: 80
+    }
+  },
+  testMatch: [
+    '<rootDir>/src/**/__tests__/**/*.{ts,tsx}',
+    '<rootDir>/src/**/*.{test,spec}.{ts,tsx}'
+  ]
+};
+```
+
+**Playwright Configuration (playwright.config.ts)**
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './src/e2e',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  
+  use: {
+    baseURL: 'http://localhost:1420', // Tauri dev server
+    trace: 'on-first-retry',
+  },
+  
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+  ],
+  
+  webServer: {
+    command: 'npm run tauri:dev',
+    url: 'http://localhost:1420',
+    reuseExistingServer: !process.env.CI,
+  },
+});
 ```
 
 ### Key Tauri Commands (Rust → Frontend Interface)
@@ -550,161 +759,280 @@ This implementation plan provides a comprehensive roadmap for building PodPico u
 
 ### Overview
 
-This section provides a framework for handing off development to AI agents across multiple sessions, ensuring continuity, quality, and progress tracking throughout the 13-week development timeline.
+This section provides a framework for handing off development to AI agents across multiple sessions, ensuring continuity, quality, and progress tracking throughout the 13-week development timeline. **CRITICAL REQUIREMENT**: Every feature must be implemented as a complete full-stack solution with both backend and frontend components meeting identical quality standards.
+
+### Full-Stack Development Mandate
+
+#### Core Principle: Complete Feature Implementation
+- **NO PARTIAL FEATURES**: Backend implementation without corresponding frontend is considered incomplete
+- **EQUAL QUALITY**: Frontend code must meet the same rigorous standards as backend (TDD, coverage, linting)
+- **INTEGRATED TESTING**: Full-stack integration tests required for every user story
+- **UI/UX VALIDATION**: User acceptance criteria must be validated through actual UI interaction
+
+#### Full-Stack Quality Standards
+- **Backend Testing**: ≥80% code coverage with comprehensive unit/integration tests
+- **Frontend Testing**: ≥80% code coverage with unit tests (Jest/Vitest) + component tests
+- **E2E Testing**: Critical user workflows must have end-to-end test coverage
+- **Visual Testing**: UI components must have visual regression test coverage
+- **Performance Testing**: Both backend API performance and frontend render performance
 
 ### Session Management Framework
 
 #### Pre-Session Setup
 Each AI agent session should begin with:
 1. **Context Loading**: Read current progress from `PROGRESS.md`
-2. **Environment Check**: Verify development environment is ready
-3. **Current State Assessment**: Review codebase and identify last completed tasks
-4. **Session Planning**: Define clear objectives for the current session
+2. **Environment Check**: Verify both backend AND frontend development environments are ready
+3. **Current State Assessment**: Review both Rust backend and React frontend codebases
+4. **Full-Stack Planning**: Define clear objectives that include BOTH backend and frontend work
 
 #### Session Structure Template
 ```markdown
 ## Session [N] - [Date] - [Phase X, Week Y]
 
-### Session Objectives
-- [ ] Primary objective 1
-- [ ] Primary objective 2
-- [ ] Secondary objective (if time permits)
+### Session Objectives (FULL-STACK REQUIRED)
+- [ ] Backend objective 1 (with corresponding frontend integration)
+- [ ] Frontend objective 1 (with corresponding backend integration)
+- [ ] Full-stack integration objective
+- [ ] End-to-end testing objective
 
-### Success Criteria
-- All primary objectives completed
-- Code compiles without errors
-- Tests pass (when applicable)
-- Documentation updated
-- Progress file updated
+### Success Criteria (FULL-STACK VALIDATION)
+- Backend functionality implemented with ≥80% test coverage
+- Frontend components implemented with ≥80% test coverage
+- Full-stack integration working end-to-end
+- User story acceptance criteria validated through UI
+- Both backend and frontend code follows linting standards
+- Performance requirements met for both backend and frontend
 
-### Quality Gates
-- [ ] Code follows Rust best practices
-- [ ] Error handling implemented
-- [ ] Logging added for debugging
-- [ ] TODOs documented for future sessions
-- [ ] No security vulnerabilities introduced
+### Quality Gates (BOTH BACKEND AND FRONTEND)
+- [ ] Backend: `cargo clippy --all-targets --all-features -- -D warnings` passes
+- [ ] Frontend: `npm run lint` passes with zero warnings
+- [ ] Backend: `cargo test` passes with ≥80% coverage
+- [ ] Frontend: `npm run test` passes with ≥80% coverage
+- [ ] Backend: Performance requirements validated
+- [ ] Frontend: Render performance and UX requirements validated
+- [ ] Integration: E2E tests pass for implemented user stories
+- [ ] Documentation: Both backend and frontend changes documented
 ```
 
-#### Post-Session Checklist
-- [ ] Update `PROGRESS.md` with completed tasks
-- [ ] Document any blockers or issues in `ISSUES.md`
-- [ ] Test that `npm run tauri dev` works
-- [ ] Commit changes with descriptive messages
-- [ ] Update next session priorities
+#### Post-Session Checklist (FULL-STACK VALIDATION)
+- [ ] Update `PROGRESS.md` with completed backend AND frontend tasks
+- [ ] Document any blockers or issues in `ISSUES.md` for both stacks
+- [ ] Verify `npm run tauri dev` works with all new functionality
+- [ ] Run full test suite: `cargo test && npm run test`
+- [ ] Validate user story through actual UI interaction
+- [ ] Commit changes with descriptive messages for both backend and frontend
+- [ ] Update next session priorities with full-stack context
 
 ### Progress Tracking System
 
-The progress tracking system uses multiple files to maintain state:
+The progress tracking system uses multiple files to maintain state and now includes frontend metrics:
 
-1. **`PROGRESS.md`** - Main progress tracker
-2. **`SESSION_NOTES.md`** - Detailed session logs
-3. **`ISSUES.md`** - Known issues and blockers
-4. **`QUALITY_METRICS.md`** - Quality and performance tracking
+1. **`PROGRESS.md`** - Main progress tracker (backend + frontend status)
+2. **`SESSION_NOTES.md`** - Detailed session logs (full-stack implementation notes)
+3. **`ISSUES.md`** - Known issues and blockers (backend + frontend)
+4. **`QUALITY_METRICS.md`** - Quality and performance tracking (full-stack metrics)
 
 ### Development Guidelines for AI Agents
 
-#### Code Quality Standards
-- **Error Handling**: Always use `Result<T, PodPicoError>` for fallible operations
-- **Logging**: Add appropriate log statements (info, warn, error levels)
-- **Documentation**: Update inline comments and TODOs
-- **Testing**: Write unit tests when implementing new functionality
-- **Security**: Validate all external inputs (RSS URLs, file paths)
+#### Full-Stack Code Quality Standards
+- **Backend Error Handling**: Always use `Result<T, PodPicoError>` for fallible operations
+- **Frontend Error Handling**: Implement proper error boundaries and user-friendly error states
+- **Backend Logging**: Add appropriate log statements (info, warn, error levels)
+- **Frontend Logging**: Implement user action tracking and error logging
+- **Backend Documentation**: Update inline comments and TODOs
+- **Frontend Documentation**: Document component props, state, and user interactions
+- **Backend Testing**: Write unit tests when implementing new functionality
+- **Frontend Testing**: Write component tests and user interaction tests
+- **Backend Security**: Validate all external inputs (RSS URLs, file paths)
+- **Frontend Security**: Sanitize all user inputs and prevent XSS
 
-#### Implementation Strategy
-- **Incremental Development**: Complete one small feature at a time
-- **Fail-Safe Design**: Implement graceful error handling and recovery
-- **User Feedback**: Provide clear error messages to users
-- **Performance**: Consider efficiency, especially for large podcast libraries
+#### Implementation Strategy (FULL-STACK)
+- **Incremental Development**: Complete one small FULL-STACK feature at a time
+- **Backend-First Approach**: Implement backend functionality with comprehensive tests
+- **Frontend Integration**: Immediately integrate backend functionality into UI
+- **User Validation**: Test every feature through actual user interface
+- **Fail-Safe Design**: Implement graceful error handling in both backend and frontend
+- **User Feedback**: Provide clear error messages and loading states in UI
+- **Performance**: Consider efficiency for both API calls and UI rendering
 
-#### Session Flow Management
-1. **Start Small**: Begin with the smallest implementable unit
-2. **Test Frequently**: Verify each change compiles and runs
-3. **Document Progress**: Update progress files continuously
-4. **Handle Blockers**: Don't get stuck - document issues and move to alternatives
-5. **Clean Handoff**: Leave clear instructions for the next session
+#### Session Flow Management (FULL-STACK)
+1. **Start Small**: Begin with the smallest implementable full-stack unit
+2. **Backend First**: Implement and test backend functionality thoroughly
+3. **Frontend Integration**: Immediately build corresponding UI components
+4. **Integration Testing**: Verify backend-frontend communication works
+5. **User Story Validation**: Test acceptance criteria through actual UI
+6. **Test Frequently**: Verify each change compiles and runs (both stacks)
+7. **Document Progress**: Update progress files with full-stack context
+8. **Handle Blockers**: Don't get stuck - document issues for both stacks
+9. **Clean Handoff**: Leave clear instructions for both backend and frontend
 
-### Phase-Specific Guidelines
+### Frontend Development Standards
+
+#### Frontend Architecture Requirements
+- **Component Structure**: Follow React best practices with proper component hierarchy
+- **State Management**: Use appropriate state management (React hooks, context, or external library)
+- **Type Safety**: Use TypeScript for all frontend code with strict type checking
+- **Styling**: Consistent styling approach (CSS modules, styled-components, or similar)
+- **Accessibility**: WCAG 2.1 AA compliance for all UI components
+
+#### Frontend Testing Requirements
+- **Unit Tests**: Every component must have comprehensive unit tests
+- **Integration Tests**: Test component interactions and data flow
+- **User Interaction Tests**: Test all user workflows and form submissions
+- **Error State Tests**: Test error handling and error boundary behavior
+- **Loading State Tests**: Test loading indicators and async behavior
+- **Accessibility Tests**: Automated accessibility testing for all components
+
+#### Frontend Quality Tools
+```json
+{
+  "scripts": {
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "test": "jest --coverage --watchAll=false",
+    "test:watch": "jest --coverage --watch",
+    "test:ci": "jest --coverage --ci --watchAll=false --coverage-threshold='{\"global\":{\"lines\":80,\"functions\":80,\"branches\":80,\"statements\":80}}'",
+    "type-check": "tsc --noEmit"
+  }
+}
+```
+
+### Phase-Specific Guidelines (FULL-STACK)
 
 #### Phase 1 (Weeks 1-6): MVP Core
-**Focus**: Foundation and basic functionality
-- Prioritize database setup and basic CRUD operations
-- Implement simple RSS parsing before complex features
-- Create basic UI components before advanced interactions
-- Test core workflows early and often
+**Focus**: Foundation and basic full-stack functionality
+- Prioritize database setup AND corresponding UI components
+- Implement RSS parsing backend AND podcast management UI
+- Create download functionality AND progress indicators in UI
+- Test core workflows through complete user interface
+- Establish full-stack testing patterns early
 
 #### Phase 2 (Weeks 7-10): Enhanced Features
-**Focus**: User experience and polish
-- Build on solid foundation from Phase 1
-- Add UI polish and user feedback mechanisms
-- Implement batch operations and advanced features
-- Focus on performance optimization
+**Focus**: User experience and full-stack polish
+- Build on solid full-stack foundation from Phase 1
+- Add UI polish AND corresponding backend optimizations
+- Implement batch operations in both backend and frontend
+- Focus on full-stack performance optimization
+- Advanced error handling in both stacks
 
 #### Phase 3 (Weeks 11-13): Quality & Distribution
-**Focus**: Production readiness
-- Comprehensive testing across platforms
-- Performance optimization and memory leak detection
-- Distribution setup and documentation
-- User experience refinement
+**Focus**: Production readiness across full stack
+- Comprehensive testing across platforms (backend + frontend)
+- Performance optimization for both API and UI
+- Memory leak detection in both Rust and JavaScript
+- Distribution setup with both backend and frontend assets
+- Full-stack user experience refinement
 
-### Troubleshooting Common Issues
+### Full-Stack Testing Strategy
 
-#### Compilation Issues
-- **Dependency conflicts**: Check `Cargo.toml` for version mismatches
-- **Missing features**: Verify Tauri feature flags are correct
-- **Platform issues**: Test on target platforms early
+#### Testing Requirements by Layer
 
-#### Runtime Issues
-- **Database errors**: Check SQLite file permissions and schema
-- **Network issues**: Implement proper timeout and retry logic
-- **USB detection**: Test with various device types
+**Backend Testing (Rust)**
+- Unit tests for all business logic
+- Integration tests for database operations
+- API endpoint tests for all Tauri commands
+- Error handling tests for all failure scenarios
+- Performance tests for critical operations
 
-#### Development Environment
-- **File locks**: Clean build directory if needed (`cargo clean`)
-- **Permission issues**: Verify file system permissions
-- **Memory issues**: Monitor system resources during development
+**Frontend Testing (React/TypeScript)**
+- Component unit tests for all React components
+- Hook tests for custom React hooks
+- Integration tests for component interactions
+- User workflow tests simulating real user behavior
+- Error boundary and error state tests
+- Accessibility tests for all UI components
 
-### Emergency Protocols
+**Full-Stack Integration Testing**
+- End-to-end tests for complete user workflows
+- API integration tests (frontend calling backend)
+- State synchronization tests
+- Error propagation tests (backend errors to frontend)
+- Performance tests for complete user actions
+
+#### Testing Tools and Framework
+
+**Backend Testing Tools**
+- `cargo test` - Standard Rust testing framework
+- `tokio-test` - Async testing utilities
+- `httpmock` - HTTP mocking for RSS feeds
+- `tempfile` - Temporary file testing
+- `cargo-tarpaulin` - Code coverage measurement
+
+**Frontend Testing Tools**
+- `Jest` - JavaScript testing framework
+- `@testing-library/react` - React component testing utilities
+- `@testing-library/jest-dom` - DOM testing matchers
+- `@testing-library/user-event` - User interaction simulation
+- `jest-axe` - Accessibility testing
+
+**Full-Stack Testing Tools**
+- `Playwright` or `Cypress` - End-to-end testing
+- `MSW` (Mock Service Worker) - API mocking in frontend tests
+- Custom test utilities for Tauri-specific testing
+
+### Emergency Protocols (FULL-STACK)
 
 #### If Development Gets Blocked
-1. **Document the Issue**: Add detailed description to `ISSUES.md`
-2. **Implement Workaround**: Create temporary solution if possible
-3. **Mark as TODO**: Add clear TODO comment for future resolution
-4. **Continue with Alternative**: Move to next implementable feature
-5. **Update Progress**: Reflect the blocker in progress tracking
+1. **Document the Issue**: Add detailed description to `ISSUES.md` (specify backend/frontend)
+2. **Implement Workaround**: Create temporary solution for both stacks if possible
+3. **Mark as TODO**: Add clear TODO comments in both backend and frontend code
+4. **Continue with Alternative**: Move to next implementable full-stack feature
+5. **Update Progress**: Reflect the blocker in progress tracking with stack context
 
-#### If Quality Degrades
-1. **Stop Adding Features**: Focus on fixing existing issues
-2. **Review Recent Changes**: Identify source of quality degradation
-3. **Add Testing**: Implement tests to prevent regression
-4. **Refactor if Needed**: Improve code structure before continuing
-5. **Update Quality Metrics**: Document lessons learned
+#### If Quality Degrades (Either Stack)
+1. **Stop Adding Features**: Focus on fixing existing issues in both stacks
+2. **Review Recent Changes**: Identify source of quality degradation (backend/frontend)
+3. **Add Testing**: Implement tests to prevent regression in both stacks
+4. **Refactor if Needed**: Improve code structure in affected stack before continuing
+5. **Update Quality Metrics**: Document lessons learned for full-stack development
 
-### Success Metrics for AI Sessions
+### Success Metrics for AI Sessions (FULL-STACK)
 
 #### Quantitative Metrics
-- **Completion Rate**: % of planned objectives completed
-- **Code Quality**: Lines of code vs. number of TODOs/issues
-- **Compilation Success**: Clean builds without warnings
-- **Test Coverage**: % of functions with tests
+- **Completion Rate**: % of planned full-stack objectives completed
+- **Code Quality**: Lines of code vs. number of TODOs/issues (both stacks)
+- **Compilation Success**: Clean builds without warnings (backend + frontend)
+- **Test Coverage**: ≥80% coverage for both backend and frontend
+- **Integration Success**: End-to-end tests passing for implemented features
 
 #### Qualitative Metrics
-- **Code Clarity**: Easy to understand and maintain
-- **User Experience**: Intuitive and responsive interface
-- **Error Handling**: Graceful failure modes
-- **Documentation**: Clear comments and progress notes
+- **Code Clarity**: Easy to understand and maintain (both stacks)
+- **User Experience**: Intuitive and responsive full-stack interface
+- **Error Handling**: Graceful failure modes in both backend and frontend
+- **Documentation**: Clear comments and progress notes for full-stack features
 
-### Handoff Protocol Between Sessions
+### Handoff Protocol Between Sessions (FULL-STACK)
 
 #### Outgoing Agent Responsibilities
-1. **Complete Current Task**: Finish the current logical unit of work
-2. **Update All Tracking Files**: Ensure progress is accurately recorded
-3. **Test Current State**: Verify application still runs correctly
-4. **Document Issues**: Record any problems encountered
-5. **Plan Next Steps**: Provide clear guidance for next session
+1. **Complete Current Full-Stack Task**: Finish both backend and frontend work
+2. **Update All Tracking Files**: Ensure full-stack progress is accurately recorded
+3. **Test Current State**: Verify both backend and frontend functionality works
+4. **Document Issues**: Record any problems encountered in either stack
+5. **Plan Next Steps**: Provide clear guidance for next full-stack session
 
 #### Incoming Agent Responsibilities
-1. **Review Progress**: Read all tracking files thoroughly
-2. **Verify Environment**: Test that development setup works
-3. **Understand Context**: Review recent commits and changes
-4. **Plan Session**: Define realistic objectives based on current state
-5. **Confirm Understanding**: Validate assumptions about current functionality 
+1. **Review Progress**: Read all tracking files for both backend and frontend context
+2. **Verify Environment**: Test that both development setups work (cargo + npm)
+3. **Understand Context**: Review recent commits and changes in both stacks
+4. **Plan Session**: Define realistic full-stack objectives based on current state
+5. **Confirm Understanding**: Validate assumptions about current full-stack functionality
+
+### Quality Gate Integration (FULL-STACK)
+
+#### Pre-Session Quality Gates
+- [ ] Backend: `cargo clippy --all-targets --all-features -- -D warnings`
+- [ ] Frontend: `npm run lint -- --max-warnings 0`
+- [ ] Backend: `cargo test --all`
+- [ ] Frontend: `npm run test:ci`
+- [ ] Integration: End-to-end tests pass for existing features
+- [ ] Performance: Both backend and frontend meet performance requirements
+
+#### Session Completion Quality Gates
+- [ ] All clippy warnings resolved (backend)
+- [ ] All ESLint warnings resolved (frontend)
+- [ ] All tests pass (backend + frontend)
+- [ ] Test coverage ≥80% for new code (both stacks)
+- [ ] User story acceptance criteria validated through UI
+- [ ] Performance requirements met (both stacks)
+- [ ] No security vulnerabilities introduced (both stacks)
+- [ ] Full-stack integration working end-to-end 
