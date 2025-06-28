@@ -252,7 +252,7 @@ impl DatabaseManager {
             .await?
         };
 
-        let episodes = rows
+        let episodes: Vec<Episode> = rows
             .into_iter()
             .map(|row| Episode {
                 id: row.get("id"),
@@ -440,6 +440,68 @@ impl DatabaseManager {
         .await?;
 
         Ok(result.last_insert_rowid())
+    }
+
+    /// User Story #12: Search for episodes within a podcast
+    /// Acceptance Criteria: Search results appear within 2 seconds with highlighted text
+    pub async fn search_episodes(
+        &self,
+        podcast_id: i64,
+        search_query: &str,
+    ) -> Result<Vec<Episode>, PodPicoError> {
+        log::info!(
+            "Searching episodes in podcast {} for query: '{}' (User Story #12)",
+            podcast_id,
+            search_query
+        );
+
+        // Use LIKE with wildcards for case-insensitive search across title and description
+        let search_pattern = format!("%{}%", search_query.to_lowercase());
+
+        let rows = sqlx::query(
+            r#"
+            SELECT e.id, e.podcast_id, p.name as podcast_name, e.title, e.description, 
+                   e.episode_url, e.published_date, e.duration, e.file_size, 
+                   e.local_file_path, e.status, e.downloaded, e.on_device
+            FROM episodes e
+            JOIN podcasts p ON e.podcast_id = p.id
+            WHERE e.podcast_id = ? 
+              AND (LOWER(e.title) LIKE ? OR LOWER(e.description) LIKE ?)
+            ORDER BY e.published_date DESC
+        "#,
+        )
+        .bind(podcast_id)
+        .bind(&search_pattern)
+        .bind(&search_pattern)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let episodes: Vec<Episode> = rows
+            .into_iter()
+            .map(|row| Episode {
+                id: row.get("id"),
+                podcast_id: row.get("podcast_id"),
+                podcast_name: row.get("podcast_name"),
+                title: row.get("title"),
+                description: row.get("description"),
+                episode_url: row.get("episode_url"),
+                published_date: row.get("published_date"),
+                duration: row.get("duration"),
+                file_size: row.get("file_size"),
+                local_file_path: row.get("local_file_path"),
+                status: row.get("status"),
+                downloaded: row.get("downloaded"),
+                on_device: row.get("on_device"),
+            })
+            .collect();
+
+        log::info!(
+            "Found {} episodes matching search query '{}' (User Story #12)",
+            episodes.len(),
+            search_query
+        );
+
+        Ok(episodes)
     }
 }
 
@@ -1014,5 +1076,214 @@ mod tests {
             .await;
 
         assert!(result.is_err()); // Should fail due to foreign key constraint
+    }
+
+    #[tokio::test]
+    async fn test_user_story_12_search_episodes_basic() {
+        // User Story #12: Search for episodes within a podcast
+        // Acceptance Criteria: Search results appear within 2 seconds with highlighted text
+        let db = create_test_db().await;
+
+        let podcast = db
+            .add_podcast(
+                "Test Podcast",
+                "https://example.com/feed.xml",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        // Add episodes with different titles and descriptions
+        let _ep1_id = db
+            .add_episode(
+                podcast.id,
+                "Introduction to Rust",
+                Some("Learn the basics of Rust programming language"),
+                "https://example.com/ep1.mp3",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let _ep2_id = db
+            .add_episode(
+                podcast.id,
+                "Advanced Python Techniques",
+                Some("Deep dive into Python best practices"),
+                "https://example.com/ep2.mp3",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let _ep3_id = db
+            .add_episode(
+                podcast.id,
+                "Web Development with JavaScript",
+                Some("Building modern web applications"),
+                "https://example.com/ep3.mp3",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        // Test search by title
+        let rust_episodes = db.search_episodes(podcast.id, "Rust").await.unwrap();
+        assert_eq!(rust_episodes.len(), 1);
+        assert_eq!(rust_episodes[0].title, "Introduction to Rust");
+
+        // Test search by description
+        let python_episodes = db.search_episodes(podcast.id, "Python").await.unwrap();
+        assert_eq!(python_episodes.len(), 1);
+        assert_eq!(python_episodes[0].title, "Advanced Python Techniques");
+
+        // Test case-insensitive search
+        let web_episodes = db.search_episodes(podcast.id, "web").await.unwrap();
+        assert_eq!(web_episodes.len(), 1); // Should match "Web Development" episode (contains "Web" in title and "web" in description)
+
+        // Test no results
+        let no_results = db.search_episodes(podcast.id, "nonexistent").await.unwrap();
+        assert_eq!(no_results.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_user_story_12_search_performance_requirements() {
+        // User Story #12: Acceptance Criteria - Search results appear within 2 seconds
+        let db = create_test_db().await;
+
+        let podcast = db
+            .add_podcast(
+                "Performance Test Podcast",
+                "https://example.com/feed.xml",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        // Add multiple episodes to test performance
+        for i in 1..=50 {
+            let _ep_id = db
+                .add_episode(
+                    podcast.id,
+                    &format!("Episode {} - Technology Discussion", i),
+                    Some(&format!("Detailed discussion about topic {}", i)),
+                    &format!("https://example.com/ep{}.mp3", i),
+                    None,
+                    None,
+                    None,
+                )
+                .await
+                .unwrap();
+        }
+
+        // Measure search performance
+        let start_time = std::time::Instant::now();
+        let results = db.search_episodes(podcast.id, "Technology").await.unwrap();
+        let elapsed = start_time.elapsed();
+
+        // Acceptance Criteria: Search results should appear within 2 seconds
+        assert!(
+            elapsed.as_secs() < 2,
+            "Search took {:.2}s, should be under 2 seconds",
+            elapsed.as_secs_f64()
+        );
+
+        // Should find all 50 episodes that contain "Technology"
+        assert_eq!(results.len(), 50);
+    }
+
+    #[tokio::test]
+    async fn test_user_story_12_search_empty_query() {
+        // User Story #12: Test edge case with empty search query
+        let db = create_test_db().await;
+
+        let podcast = db
+            .add_podcast(
+                "Test Podcast",
+                "https://example.com/feed.xml",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let _ep_id = db
+            .add_episode(
+                podcast.id,
+                "Test Episode",
+                Some("Test description"),
+                "https://example.com/ep.mp3",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        // Empty search should return all episodes
+        let results = db.search_episodes(podcast.id, "").await.unwrap();
+        assert_eq!(results.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_user_story_12_search_special_characters() {
+        // User Story #12: Test search with special characters
+        let db = create_test_db().await;
+
+        let podcast = db
+            .add_podcast(
+                "Test Podcast",
+                "https://example.com/feed.xml",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let _ep_id = db
+            .add_episode(
+                podcast.id,
+                "Episode: Special Characters & Symbols",
+                Some("Discussion about SQL's % and _ wildcards"),
+                "https://example.com/ep.mp3",
+                None,
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        // Search for content with special characters
+        let results = db.search_episodes(podcast.id, "Special").await.unwrap();
+        assert_eq!(results.len(), 1);
+
+        // Search for SQL wildcards (should be treated as literal characters)
+        let results = db.search_episodes(podcast.id, "%").await.unwrap();
+        assert_eq!(results.len(), 1);
+
+        let results = db.search_episodes(podcast.id, "_").await.unwrap();
+        assert_eq!(results.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_user_story_12_search_nonexistent_podcast() {
+        // User Story #12: Test search on non-existent podcast
+        let db = create_test_db().await;
+
+        // Search in non-existent podcast should return empty results
+        let results = db.search_episodes(999, "test").await.unwrap();
+        assert_eq!(results.len(), 0);
     }
 }

@@ -39,6 +39,12 @@ function App() {
   const [error, setError] = useState('')
   const [rssUrl, setRssUrl] = useState('')
   const [addingPodcast, setAddingPodcast] = useState(false)
+  
+  // User Story #12: Search for episodes within a podcast
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Episode[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [isSearchMode, setIsSearchMode] = useState(false)
 
   // Load podcasts on component mount
   useEffect(() => {
@@ -154,6 +160,68 @@ function App() {
     }
   }
 
+  // User Story #12: Search for episodes within a podcast
+  // Acceptance Criteria: Search results appear within 2 seconds with highlighted text
+  async function searchEpisodes(query: string) {
+    if (!selectedPodcast) return
+
+    setIsSearching(true)
+    try {
+      const startTime = Date.now()
+      
+      if (query.trim() === '') {
+        // Clear search - return to normal episode list
+        setIsSearchMode(false)
+        setSearchResults([])
+        await loadEpisodes(selectedPodcast.id)
+      } else {
+        // Perform search
+        const results: Episode[] = await invoke('search_episodes', {
+          podcastId: selectedPodcast.id,
+          searchQuery: query,
+        })
+
+        const searchTime = Date.now() - startTime
+        
+        // Performance monitoring for User Story #12 acceptance criteria
+        if (searchTime > 2000) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `User Story #12: Search took ${searchTime}ms, should be under 2 seconds`
+          )
+        }
+
+        setSearchResults(results)
+        setIsSearchMode(true)
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to search episodes:', err)
+      setError(`Failed to search episodes: ${err}`)
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  // Debounced search effect for User Story #12
+  // Acceptance Criteria: Search results appear within 2 seconds
+  useEffect(() => {
+    if (!selectedPodcast) return
+
+    const debounceTimer = setTimeout(() => {
+      searchEpisodes(searchQuery)
+    }, 300) // 300ms debounce for responsive search
+
+    return () => clearTimeout(debounceTimer)
+  }, [searchQuery, selectedPodcast])
+
+  // Clear search when podcast selection changes
+  useEffect(() => {
+    setSearchQuery('')
+    setIsSearchMode(false)
+    setSearchResults([])
+  }, [selectedPodcast])
+
   function formatDuration(seconds?: number): string {
     if (!seconds) return 'Unknown'
 
@@ -196,6 +264,31 @@ function App() {
     return podcasts.reduce(
       (total, podcast) => total + podcast.new_episode_count,
       0
+    )
+  }
+
+  // User Story #12: Highlight matching text in search results
+  // Acceptance Criteria: Matching text is highlighted in episode titles/descriptions
+  function highlightText(text: string, searchQuery: string): JSX.Element {
+    if (!searchQuery.trim() || !text) {
+      return <>{text}</>
+    }
+
+    const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    const parts = text.split(regex)
+
+    return (
+      <>
+        {parts.map((part, index) =>
+          regex.test(part) ? (
+            <mark key={index} className="search-highlight">
+              {part}
+            </mark>
+          ) : (
+            <span key={index}>{part}</span>
+          )
+        )}
+      </>
     )
   }
 
@@ -276,16 +369,41 @@ function App() {
                 ? `${selectedPodcast.name} Episodes`
                 : 'All New Episodes'}
             </h2>
+            
+            {/* User Story #12: Search for episodes within a podcast */}
+            {selectedPodcast && (
+              <div className="search-section">
+                <input
+                  type="text"
+                  placeholder="Search episodes..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+                {isSearching && <span className="search-loading">⏳</span>}
+                {isSearchMode && (
+                  <span className="search-results-count">
+                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            )}
+            
             <div className="episode-count-info">
-              {episodes?.length || 0} episode{(episodes?.length || 0) !== 1 ? 's' : ''}
+              {isSearchMode
+                ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                : `${episodes?.length || 0} episode${(episodes?.length || 0) !== 1 ? 's' : ''}`}
             </div>
           </header>
 
-          {loading ? (
-            <div className="loading">Loading episodes...</div>
+          {loading || isSearching ? (
+            <div className="loading">
+              {isSearching ? 'Searching episodes...' : 'Loading episodes...'}
+            </div>
           ) : (
             <div className="episode-list">
-              {episodes?.map(episode => (
+              {/* User Story #12: Show search results or regular episodes */}
+              {(isSearchMode ? searchResults : episodes)?.map(episode => (
                 <div
                   key={episode.id}
                   className={`episode-item ${selectedEpisode?.id === episode.id ? 'selected' : ''}`}
@@ -299,7 +417,9 @@ function App() {
                   </div>
 
                   <div className="episode-info">
-                    <h3 className="episode-title">{episode.title}</h3>
+                    <h3 className="episode-title">
+                      {isSearchMode ? highlightText(episode.title, searchQuery) : episode.title}
+                    </h3>
                     <div className="episode-meta">
                       {!selectedPodcast && (
                         <span className="podcast-name">
@@ -338,9 +458,12 @@ function App() {
                 </div>
               ))}
 
-              {(!episodes || episodes.length === 0) && !loading && (
+              {/* User Story #12: Handle empty search results */}
+              {(isSearchMode ? searchResults.length === 0 : (!episodes || episodes.length === 0)) && !loading && !isSearching && (
                 <div className="empty-state">
-                  {selectedPodcast
+                  {isSearchMode
+                    ? `No episodes found matching "${searchQuery}"`
+                    : selectedPodcast
                     ? `No episodes found for ${selectedPodcast.name}`
                     : 'No new episodes across all podcasts'}
                 </div>

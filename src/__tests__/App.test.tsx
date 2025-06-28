@@ -240,6 +240,180 @@ describe('App Component', () => {
     })
   })
 
+  describe('User Story #12: Search for episodes within a podcast', () => {
+    it('shows search input when podcast is selected but not in combined inbox', async () => {
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // initial get_episodes (combined inbox)
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
+
+      render(<App />)
+
+      // Initially in combined inbox - search should not be visible
+      await waitFor(() => {
+        expect(screen.queryByPlaceholderText('Search episodes...')).not.toBeInTheDocument()
+      })
+
+      // Select a podcast
+      await waitFor(() => {
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('Test Podcast'))
+
+      // Search input should now be visible
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+      })
+    })
+
+    it('performs search and displays results with highlighting', async () => {
+      const mockSearchResults = [
+        { ...MOCK_EPISODE, title: 'Introduction to React Testing' }
+      ]
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // initial get_episodes
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
+        .mockResolvedValueOnce(mockSearchResults) // search_episodes
+
+      render(<App />)
+
+      // Select podcast
+      await waitFor(() => {
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('Test Podcast'))
+
+      // Wait for search input to appear
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+      })
+
+      // Perform search
+      const searchInput = screen.getByPlaceholderText('Search episodes...')
+      fireEvent.change(searchInput, { target: { value: 'React' } })
+
+      // Wait for search to be called (with debouncing)
+      await waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
+          podcastId: 1,
+          searchQuery: 'React',
+        })
+      }, { timeout: 1000 })
+
+      // Check search results are displayed
+      await waitFor(() => {
+        // Verify the search functionality is working by checking for highlighted text
+        const highlightedElement = screen.getByText('React')
+        expect(highlightedElement).toBeInTheDocument()
+        // Verify the highlight CSS class is applied
+        expect(highlightedElement.closest('mark')).toHaveClass('search-highlight')
+        // Verify the search input has the correct value
+        expect(screen.getByPlaceholderText('Search episodes...')).toHaveValue('React')
+      })
+    })
+
+    it('meets performance requirement of search results within 2 seconds', async () => {
+      const mockSearchResults = [MOCK_EPISODE]
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // initial get_episodes
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
+        .mockResolvedValueOnce(mockSearchResults) // search_episodes
+
+      render(<App />)
+
+      // Select podcast
+      await waitFor(() => {
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('Test Podcast'))
+
+      // Wait for search input
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+      })
+
+      // Measure search performance
+      const startTime = Date.now()
+      const searchInput = screen.getByPlaceholderText('Search episodes...')
+      fireEvent.change(searchInput, { target: { value: 'test' } })
+
+      await waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
+          podcastId: 1,
+          searchQuery: 'test',
+        })
+      }, { timeout: 2500 })
+
+      const searchTime = Date.now() - startTime
+      expect(searchTime).toBeLessThan(2000) // 2 second requirement
+    })
+
+    it('clears search when query is empty', async () => {
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // initial get_episodes
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
+        .mockResolvedValueOnce([MOCK_EPISODE]) // search_episodes (empty query returns to normal)
+
+      render(<App />)
+
+      // Select podcast
+      await waitFor(() => {
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('Test Podcast'))
+
+      // Wait for search input
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+      })
+
+      // Enter and then clear search
+      const searchInput = screen.getByPlaceholderText('Search episodes...')
+      fireEvent.change(searchInput, { target: { value: 'test' } })
+      fireEvent.change(searchInput, { target: { value: '' } })
+
+      // Should return to normal episode list
+      await waitFor(() => {
+        expect(screen.getByText('1 episode')).toBeInTheDocument()
+      })
+    })
+
+    it('shows no results message when search returns empty', async () => {
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // initial get_episodes
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
+        .mockResolvedValueOnce([]) // search_episodes with no results
+
+      render(<App />)
+
+      // Select podcast
+      await waitFor(() => {
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('Test Podcast'))
+
+      // Wait for search input
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+      })
+
+      // Perform search that returns no results
+      const searchInput = screen.getByPlaceholderText('Search episodes...')
+      fireEvent.change(searchInput, { target: { value: 'nonexistent' } })
+
+      // Check for no results message
+      await waitFor(() => {
+        expect(screen.getByText('No episodes found matching "nonexistent"')).toBeInTheDocument()
+      })
+    })
+  })
+
   describe('Error Handling', () => {
     it('handles podcast loading errors gracefully', async () => {
       mockInvoke.mockRejectedValueOnce(new Error('Database error'))

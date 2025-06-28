@@ -49,6 +49,7 @@ pub fn run() {
             commands::remove_podcast,
             commands::get_podcasts,
             commands::get_episodes,
+            commands::search_episodes,
             commands::update_episode_status,
             // Download management commands
             commands::download_episode,

@@ -262,17 +262,15 @@ pub async fn get_podcasts() -> Result<Vec<Podcast>, String> {
 
 #[tauri::command]
 pub async fn get_episodes(podcast_id: Option<i64>) -> Result<Vec<Episode>, String> {
-    log::info!(
-        "Getting episodes for podcast: {:?} (User Story #2, #7)",
-        podcast_id
-    );
-
     let db_lock = DATABASE.lock().await;
     let db = db_lock.as_ref().ok_or("Database not initialized")?;
 
-    db.get_episodes(podcast_id)
+    let episodes = db
+        .get_episodes(podcast_id)
         .await
-        .map_err(|e| format!("Failed to get episodes: {}", e))
+        .map_err(|e| format!("Failed to get episodes: {}", e))?;
+
+    Ok(episodes)
 }
 
 #[tauri::command]
@@ -294,6 +292,38 @@ pub async fn update_episode_status(episode_id: i64, status: String) -> Result<()
     db.update_episode_status(episode_id, &status)
         .await
         .map_err(|e| format!("Failed to update episode status: {}", e))
+}
+
+/// User Story #12: Search for episodes within a podcast
+/// Acceptance Criteria: Search results appear within 2 seconds with highlighted text
+#[tauri::command]
+pub async fn search_episodes(podcast_id: i64, search_query: String) -> Result<Vec<Episode>, String> {
+    log::info!("Searching episodes in podcast {} for query: '{}' (User Story #12)", podcast_id, search_query);
+
+    let db_lock = DATABASE.lock().await;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+
+    // Measure search performance for acceptance criteria validation
+    let start_time = std::time::Instant::now();
+    
+    let episodes = db
+        .search_episodes(podcast_id, &search_query)
+        .await
+        .map_err(|e| format!("Failed to search episodes: {}", e))?;
+
+    let elapsed = start_time.elapsed();
+    
+    // Log performance metrics for User Story #12 acceptance criteria
+    log::info!("Search completed in {:.2}ms for {} results (User Story #12)", 
+               elapsed.as_millis(), episodes.len());
+
+    // Acceptance Criteria: Search results appear within 2 seconds
+    if elapsed.as_secs() >= 2 {
+        log::warn!("Search performance warning: took {:.2}s, should be under 2 seconds (User Story #12)", 
+                   elapsed.as_secs_f64());
+    }
+
+    Ok(episodes)
 }
 
 // Download management commands
@@ -2040,6 +2070,286 @@ mod tests {
         assert!(
             consistency_report.database_episodes == consistency_report.database_episodes,
             "User Story #11: Should have valid episode count"
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_12_search_episodes_basic() {
+        // PURPOSE: Validates User Story #12 Command Interface
+        // CRITERIA: "Given I enter search terms, when I search within a podcast, then results appear within 2 seconds"
+
+        let (db, _rss, _file, _usb) = setup_test_environment().await;
+
+        // Create test podcast and episodes
+        let podcast = db
+            .add_podcast(
+                "Search Test Podcast",
+                "https://example.com/search.rss",
+                Some("Test description"),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let _episode_id_1 = db
+            .add_episode(
+                podcast.id,
+                "Introduction to Rust Programming",
+                Some("Learn the basics of Rust programming language"),
+                "https://example.com/rust-intro.mp3",
+                None,
+                Some(1800),
+                Some(50_000_000),
+            )
+            .await
+            .unwrap();
+
+        let _episode_id_2 = db
+            .add_episode(
+                podcast.id,
+                "Advanced Python Techniques",
+                Some("Deep dive into Python best practices"),
+                "https://example.com/python-advanced.mp3",
+                None,
+                Some(2100),
+                Some(60_000_000),
+            )
+            .await
+            .unwrap();
+
+        // Test search command
+        let result = search_episodes(podcast.id, "Rust".to_string()).await;
+
+        // Assertions
+        assert!(
+            result.is_ok(),
+            "User Story #12: Search command should succeed"
+        );
+        let episodes = result.unwrap();
+        assert_eq!(
+            episodes.len(),
+            1,
+            "User Story #12: Should find exactly one episode with 'Rust'"
+        );
+        assert_eq!(
+            episodes[0].title,
+            "Introduction to Rust Programming",
+            "User Story #12: Should find the correct episode"
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_12_search_performance_requirements() {
+        // PURPOSE: Validates User Story #12 Performance Requirements
+        // CRITERIA: "Given I enter search terms, when I search within a podcast, then results appear within 2 seconds"
+
+        let (db, _rss, _file, _usb) = setup_test_environment().await;
+
+        // Create test podcast with multiple episodes
+        let podcast = db
+            .add_podcast(
+                "Performance Test Podcast",
+                "https://example.com/performance.rss",
+                Some("Test description"),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        // Add multiple episodes to test performance
+        for i in 1..=20 {
+            let _episode_id = db
+                .add_episode(
+                    podcast.id,
+                    &format!("Episode {} - Technology Discussion", i),
+                    Some(&format!("Detailed discussion about technology topic {}", i)),
+                    &format!("https://example.com/ep{}.mp3", i),
+                    None,
+                    Some(1800),
+                    Some(50_000_000),
+                )
+                .await
+                .unwrap();
+        }
+
+        // Measure search performance
+        let start_time = std::time::Instant::now();
+        let result = search_episodes(podcast.id, "Technology".to_string()).await;
+        let elapsed = start_time.elapsed();
+
+        // Assertions
+        assert!(
+            result.is_ok(),
+            "User Story #12: Search command should succeed"
+        );
+        let episodes = result.unwrap();
+        assert_eq!(
+            episodes.len(),
+            20,
+            "User Story #12: Should find all episodes with 'Technology'"
+        );
+        
+        // Acceptance Criteria: Search results appear within 2 seconds
+        assert!(
+            elapsed.as_secs() < 2,
+            "User Story #12: Search took {:.2}s, should be under 2 seconds",
+            elapsed.as_secs_f64()
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_12_search_empty_query() {
+        // PURPOSE: Validates User Story #12 Edge Case Handling
+        // CRITERIA: "Given I clear search, when the action completes, then the full episode list returns immediately"
+
+        let (db, _rss, _file, _usb) = setup_test_environment().await;
+
+        // Create test podcast with episodes
+        let podcast = db
+            .add_podcast(
+                "Empty Search Test Podcast",
+                "https://example.com/empty.rss",
+                Some("Test description"),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let _episode_id = db
+            .add_episode(
+                podcast.id,
+                "Test Episode",
+                Some("Test description"),
+                "https://example.com/test.mp3",
+                None,
+                Some(1800),
+                Some(50_000_000),
+            )
+            .await
+            .unwrap();
+
+        // Test empty search query
+        let result = search_episodes(podcast.id, "".to_string()).await;
+
+        // Assertions
+        assert!(
+            result.is_ok(),
+            "User Story #12: Empty search should succeed"
+        );
+        let episodes = result.unwrap();
+        assert_eq!(
+            episodes.len(),
+            1,
+            "User Story #12: Empty search should return all episodes"
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_12_search_no_results() {
+        // PURPOSE: Validates User Story #12 No Results Handling
+        // CRITERIA: "Given no search results, when the search completes, then I see a clear 'no results found' message"
+
+        let (db, _rss, _file, _usb) = setup_test_environment().await;
+
+        // Create test podcast with episodes
+        let podcast = db
+            .add_podcast(
+                "No Results Test Podcast",
+                "https://example.com/noresults.rss",
+                Some("Test description"),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let _episode_id = db
+            .add_episode(
+                podcast.id,
+                "Technology Discussion",
+                Some("Discussion about programming"),
+                "https://example.com/tech.mp3",
+                None,
+                Some(1800),
+                Some(50_000_000),
+            )
+            .await
+            .unwrap();
+
+        // Test search with no matching results
+        let result = search_episodes(podcast.id, "nonexistent".to_string()).await;
+
+        // Assertions
+        assert!(
+            result.is_ok(),
+            "User Story #12: No results search should succeed"
+        );
+        let episodes = result.unwrap();
+        assert_eq!(
+            episodes.len(),
+            0,
+            "User Story #12: Should return empty results for no matches"
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_user_story_12_search_case_insensitive() {
+        // PURPOSE: Validates User Story #12 Case Insensitive Search
+        // CRITERIA: "Given search results, when displayed, then matching text is highlighted in episode titles/descriptions"
+
+        let (db, _rss, _file, _usb) = setup_test_environment().await;
+
+        // Create test podcast with episodes
+        let podcast = db
+            .add_podcast(
+                "Case Test Podcast",
+                "https://example.com/case.rss",
+                Some("Test description"),
+                None,
+                None,
+            )
+            .await
+            .unwrap();
+
+        let _episode_id = db
+            .add_episode(
+                podcast.id,
+                "JavaScript Fundamentals",
+                Some("Learn JavaScript programming"),
+                "https://example.com/js.mp3",
+                None,
+                Some(1800),
+                Some(50_000_000),
+            )
+            .await
+            .unwrap();
+
+        // Test case-insensitive search
+        let result = search_episodes(podcast.id, "javascript".to_string()).await;
+
+        // Assertions
+        assert!(
+            result.is_ok(),
+            "User Story #12: Case insensitive search should succeed"
+        );
+        let episodes = result.unwrap();
+        assert_eq!(
+            episodes.len(),
+            1,
+            "User Story #12: Should find episode regardless of case"
+        );
+        assert_eq!(
+            episodes[0].title,
+            "JavaScript Fundamentals",
+            "User Story #12: Should find the correct episode"
         );
     }
 }
