@@ -4,6 +4,100 @@
 
 You are an AI agent taking over a PodPico development session. Follow these comprehensive instructions to ensure high-quality, test-driven development that meets all product requirements and maintains code excellence.
 
+## 🚨 **CRITICAL FRONTEND IMPLEMENTATION BACKLOG** (Updated: 2025-06-28 21:23:09)
+
+### **IMMEDIATE SESSION PRIORITY: Complete Frontend for Backend-Ready User Stories**
+
+**🔥 CRITICAL FINDING**: 5 user stories marked as "COMPLETE" have full backend implementations but NO frontend UI.
+This represents 50% implementation debt and violates the full-stack development mandate.
+
+#### **FRONTEND IMPLEMENTATION REQUIRED (Priority Order)**
+
+**1. User Story #3: Download Episodes Frontend** (Est: 4-6 hours)
+- **Backend Status**: ✅ COMPLETE (8 tests passing)
+- **Frontend Status**: ❌ MISSING (only disabled placeholder button)
+- **Required Implementation**:
+  - Replace disabled download button with functional implementation
+  - Add progress indicators with percentage display
+  - Integrate with `download_episode` and `get_download_progress` commands
+  - Add download status indicators in episode list
+  - Error handling and retry functionality
+- **Acceptance Criteria**: Progress tracking, file existence validation, error messages
+- **Backend Commands Ready**: `download_episode()`, `get_download_progress()`
+
+**2. User Story #4: Remove Podcast Frontend** (Est: 3-4 hours)
+- **Backend Status**: ✅ COMPLETE (5 tests passing)
+- **Frontend Status**: ❌ COMPLETELY MISSING
+- **Required Implementation**:
+  - Add remove/unsubscribe buttons or context menus
+  - Implement confirmation dialogs
+  - Handle downloaded episode cleanup options
+  - USB episode notifications
+  - Integrate with `remove_podcast` command
+- **Acceptance Criteria**: Confirmation dialog, cleanup options, immediate UI updates
+- **Backend Commands Ready**: `remove_podcast()`
+
+**3. User Story #8: USB Device Management Frontend** (Est: 5-6 hours)
+- **Backend Status**: ✅ COMPLETE (8 tests passing)  
+- **Frontend Status**: ❌ COMPLETELY MISSING
+- **Required Implementation**:
+  - Add USB device management pane/section
+  - Display storage capacity (numerical + visual indicators)
+  - Device detection status
+  - "No device connected" messaging
+  - Real-time storage updates
+- **Acceptance Criteria**: 5-second detection, storage visualization, status updates
+- **Backend Commands Ready**: `get_usb_devices()`
+
+**4. User Story #9: Transfer Episodes Frontend** (Est: 5-7 hours)
+- **Backend Status**: ✅ COMPLETE (12 tests passing)
+- **Frontend Status**: ❌ MISSING (only disabled placeholder button)
+- **Required Implementation**:
+  - Replace disabled transfer button with functional implementation
+  - Add device selection UI
+  - Progress indicators with speed/ETA display
+  - Space validation warnings
+  - Success/failure notifications
+  - Update episode "on device" indicators
+- **Acceptance Criteria**: Progress tracking, space validation, success indicators
+- **Backend Commands Ready**: `transfer_episode_to_device()`
+
+**5. User Story #10: Remove from USB Frontend** (Est: 4-5 hours)
+- **Backend Status**: ✅ COMPLETE (8 tests passing)
+- **Frontend Status**: ❌ COMPLETELY MISSING
+- **Required Implementation**:
+  - Device episode management interface
+  - Remove from device buttons/options
+  - Confirmation dialogs
+  - Storage space updates
+  - "On device" indicator updates
+- **Acceptance Criteria**: Confirmation required, space updates, status consistency
+- **Backend Commands Ready**: `remove_episode_from_device()`
+
+#### **DEVELOPMENT APPROACH FOR FRONTEND DEBT**
+
+**Test-Driven Frontend Development**:
+1. **Write failing frontend tests** for missing UI components first
+2. **Implement minimum UI** to make tests pass
+3. **Integrate with existing backend commands** (already tested and working)
+4. **Validate acceptance criteria** through UI interaction
+5. **Add comprehensive error handling** and loading states
+
+**Integration Testing Priority**:
+- All backend commands are tested and functional
+- Focus on frontend component tests and backend integration
+- Validate user workflows end-to-end
+- Ensure UI state updates match backend changes
+
+**Quality Standards for Frontend Debt Resolution**:
+- Each user story frontend must achieve ≥80% test coverage
+- All backend commands must be properly integrated
+- UI must meet acceptance criteria from ProductOverview.md
+- Error handling must be comprehensive with user-friendly messages
+- Loading states and progress indicators required for all async operations
+
+---
+
 ## 🚀 MANDATORY Session Startup Protocol
 
 ### 1. Get Current Date and Time

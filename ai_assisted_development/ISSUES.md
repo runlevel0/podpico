@@ -241,3 +241,122 @@ When adding new issues, use this template:
 2. High priority issues should be resolved before moving to new features
 3. All resolutions should be tested and documented
 4. Resolved issues should be moved to "Resolved Issues" section with solution details 
+
+# PodPico Development Issues
+
+**Last Updated**: 2025-06-28 21:23:09
+
+## 🚨 **CRITICAL ISSUES** (Blocking Production)
+
+### **Issue #001: Frontend Implementation Debt Crisis** 
+**Severity**: 🔴 CRITICAL  
+**Discovery Date**: 2025-06-28  
+**Impact**: 50% of "completed" features unusable from UI
+
+**Description**: 
+5 user stories (#3, #4, #8, #9, #10) have complete backend implementations with comprehensive test coverage, but completely missing frontend UI components. This creates a false sense of completion and violates the full-stack development mandate.
+
+**Evidence**:
+- Backend: 107 tests passing, all commands functional
+- Frontend: Only placeholder buttons for critical features
+- Documentation: Incorrectly claims features are "COMPLETE WITH FULL TESTING"
+
+**User Stories Affected**:
+- User Story #3: Download episodes (backend: 8 tests ✅, frontend: disabled button ❌)
+- User Story #4: Remove podcasts (backend: 5 tests ✅, frontend: missing ❌)
+- User Story #8: USB device capacity (backend: 8 tests ✅, frontend: missing ❌)
+- User Story #9: Transfer to USB (backend: 12 tests ✅, frontend: disabled button ❌)
+- User Story #10: Remove from USB (backend: 8 tests ✅, frontend: missing ❌)
+
+**Root Cause**: 
+Development sessions focused on backend implementation without corresponding frontend integration, contradicting AI Agent Instructions requirement for complete full-stack features.
+
+**Resolution Required**:
+1. Implement frontend UI for all 5 user stories
+2. Add frontend tests with ≥80% coverage
+3. Integrate with existing backend commands
+4. Update documentation to reflect actual status
+5. Establish full-stack completion verification
+
+**Estimated Effort**: 20-25 hours total frontend development
+**Priority**: IMMEDIATE - Must resolve before new feature development
+
+---
+
+### **Issue #002: Documentation Accuracy Crisis**
+**Severity**: 🟡 HIGH  
+**Discovery Date**: 2025-06-28  
+**Impact**: Misleading progress tracking, incorrect project status
+
+**Description**: 
+Multiple documentation files claim user stories are "COMPLETE" when only backend is implemented. This misrepresents actual project status and could lead to false delivery expectations.
+
+**Files Affected**:
+- `PROGRESS.md`: Claims 10 user stories complete (actually 5)
+- `QUALITY_METRICS.md`: Reports high completion rate
+- `SESSION_NOTES.md`: May contain inaccurate status updates
+
+**Resolution Required**:
+1. Update all documentation with accurate implementation status
+2. Establish clear backend vs frontend vs integration status tracking
+3. Add verification checkpoints for future documentation updates
+
+**Status**: 🔄 IN PROGRESS (Documentation updates in this session)
+
+---
+
+### **Issue #003: Frontend Test Coverage Gaps**
+**Severity**: 🟡 MEDIUM  
+**Discovery Date**: 2025-06-28  
+**Impact**: Missing test coverage for 50% of implemented features
+
+**Description**: 
+Frontend tests only cover basic UI functionality for 5 user stories. No tests exist for USB functionality, downloads, transfers, or podcast removal.
+
+**Current Status**:
+- Frontend tests: 41 passing (basic coverage only)
+- Missing tests for: User Stories #3, #4, #8, #9, #10
+- React testing warnings: Missing `act()` wrappers
+
+**Resolution Required**:
+1. Add frontend tests for missing user story implementations
+2. Fix React testing warnings with proper `act()` usage
+3. Add integration tests for backend command calls
+4. Establish frontend test coverage requirements
+
+**Priority**: HIGH - Should be resolved with frontend implementation
+
+---
+
+## 🟡 **MEDIUM ISSUES** (Quality Improvements)
+
+### **Issue #004: React Testing Warnings**
+**Severity**: 🟡 MEDIUM  
+**Discovery Date**: 2025-06-28  
+**Impact**: Test output noise, potential test reliability issues
+
+**Description**: 
+Frontend tests generate numerous React warnings about missing `act()` wrappers for state updates.
+
+**Solution**: Wrap test state updates in React Testing Library `act()` calls
+
+---
+
+## 📋 **TRACKING INFORMATION**
+
+### Issue Resolution Progress
+- **Critical Issues**: 3 total, 1 in progress
+- **Medium Issues**: 1 total, 0 resolved
+- **Resolution Rate**: 0% (no issues fully resolved yet)
+
+### Next Session Priorities
+1. ✅ Update documentation (in progress)
+2. 🔄 Begin frontend implementation for User Story #3
+3. 🔄 Establish frontend testing standards
+4. ⏳ Create full-stack completion verification process
+
+---
+
+## 🔧 **RESOLVED ISSUES** (Historical)
+
+*No issues resolved yet - this is the first comprehensive audit session* 
