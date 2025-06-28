@@ -1,121 +1,124 @@
-import { useState, useEffect } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useState, useEffect } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import './App.css'
 
 interface Podcast {
-  id: number;
-  name: string;
-  rss_url: string;
-  description?: string;
-  artwork_url?: string;
-  website_url?: string;
-  last_updated?: string;
-  episode_count: number;
-  new_episode_count: number;
+  id: number
+  name: string
+  rss_url: string
+  description?: string
+  artwork_url?: string
+  website_url?: string
+  last_updated?: string
+  episode_count: number
+  new_episode_count: number
 }
 
 interface Episode {
-  id: number;
-  podcast_id: number;
-  podcast_name: string;
-  title: string;
-  description?: string;
-  episode_url: string;
-  published_date?: string;
-  duration?: number;
-  file_size?: number;
-  local_file_path?: string;
-  status: string;
-  downloaded: boolean;
-  on_device: boolean;
+  id: number
+  podcast_id: number
+  podcast_name: string
+  title: string
+  description?: string
+  episode_url: string
+  published_date?: string
+  duration?: number
+  file_size?: number
+  local_file_path?: string
+  status: string
+  downloaded: boolean
+  on_device: boolean
 }
 
 function App() {
-  const [podcasts, setPodcasts] = useState<Podcast[]>([]);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [selectedPodcast, setSelectedPodcast] = useState<Podcast | null>(null);
-  const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [rssUrl, setRssUrl] = useState("");
-  const [addingPodcast, setAddingPodcast] = useState(false);
+  const [podcasts, setPodcasts] = useState<Podcast[]>([])
+  const [episodes, setEpisodes] = useState<Episode[]>([])
+  const [selectedPodcast, setSelectedPodcast] = useState<Podcast | null>(null)
+  const [selectedEpisode, setSelectedEpisode] = useState<Episode | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [rssUrl, setRssUrl] = useState('')
+  const [addingPodcast, setAddingPodcast] = useState(false)
 
   // Load podcasts on component mount
   useEffect(() => {
-    loadPodcasts();
-  }, []);
+    loadPodcasts()
+  }, [])
 
   // Load episodes when podcast selection changes
   useEffect(() => {
     if (selectedPodcast) {
-      loadEpisodes(selectedPodcast.id);
+      loadEpisodes(selectedPodcast.id)
     } else {
       // Load all new episodes for Combined Inbox
-      loadEpisodes(null);
+      loadEpisodes(null)
     }
-  }, [selectedPodcast]);
+  }, [selectedPodcast])
 
   async function loadPodcasts() {
     try {
-      const podcastList: Podcast[] = await invoke("get_podcasts");
-      setPodcasts(podcastList);
+      const podcastList: Podcast[] = await invoke('get_podcasts')
+      setPodcasts(podcastList)
     } catch (err) {
-      console.error("Failed to load podcasts:", err);
-      setError(`Failed to load podcasts: ${err}`);
+      // eslint-disable-next-line no-console
+      console.error('Failed to load podcasts:', err)
+      setError(`Failed to load podcasts: ${err}`)
     }
   }
 
   async function loadEpisodes(podcastId: number | null) {
-    setLoading(true);
+    setLoading(true)
     try {
       // User Story #2: View all episodes of specific podcast
       // Acceptance Criteria: Episodes display within 3 seconds
-      const startTime = Date.now();
-      
-      const episodeList: Episode[] = await invoke("get_episodes", { 
-        podcastId: podcastId 
-      });
-      
-      const loadTime = Date.now() - startTime;
-      console.log(`User Story #2: Episodes loaded in ${loadTime}ms`);
-      
+      const startTime = Date.now()
+
+      const episodeList: Episode[] = await invoke('get_episodes', {
+        podcastId: podcastId,
+      })
+
+      const loadTime = Date.now() - startTime
+      // Performance monitoring for User Story #2 acceptance criteria
       if (loadTime > 3000) {
-        console.warn(`User Story #2: Load time exceeded 3 seconds (${loadTime}ms)`);
+        // eslint-disable-next-line no-console
+        console.warn(
+          `User Story #2: Load time exceeded 3 seconds (${loadTime}ms)`
+        )
       }
-      
-      setEpisodes(episodeList);
-      setSelectedEpisode(null); // Clear episode selection when changing podcast
+
+      setEpisodes(episodeList)
+      setSelectedEpisode(null) // Clear episode selection when changing podcast
     } catch (err) {
-      console.error("Failed to load episodes:", err);
-      setError(`Failed to load episodes: ${err}`);
+      // eslint-disable-next-line no-console
+      console.error('Failed to load episodes:', err)
+      setError(`Failed to load episodes: ${err}`)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
   async function addPodcast() {
     if (!rssUrl.trim()) {
-      setError("Please enter an RSS URL");
-      return;
+      setError('Please enter an RSS URL')
+      return
     }
 
-    setAddingPodcast(true);
-    setError("");
-    
+    setAddingPodcast(true)
+    setError('')
+
     try {
       // User Story #1: Add new podcast subscription via RSS URL
-      const podcast: Podcast = await invoke("add_podcast", { rssUrl });
-      console.log("Added podcast:", podcast);
-      
-      await loadPodcasts();
-      setRssUrl("");
-      setError("");
+      await invoke('add_podcast', { rssUrl })
+
+      await loadPodcasts()
+      setRssUrl('')
+      setError('')
     } catch (err) {
-      console.error("Failed to add podcast:", err);
-      setError(`Failed to add podcast: ${err}`);
+      // eslint-disable-next-line no-console
+      console.error('Failed to add podcast:', err)
+      setError(`Failed to add podcast: ${err}`)
     } finally {
-      setAddingPodcast(false);
+      setAddingPodcast(false)
     }
   }
 
@@ -123,71 +126,77 @@ function App() {
     try {
       // User Story #5: Mark episodes as "listened"
       // Acceptance Criteria: Status persists across sessions
-      await invoke("update_episode_status", { 
-        episodeId, 
-        status: newStatus 
-      });
-      
+      await invoke('update_episode_status', {
+        episodeId,
+        status: newStatus,
+      })
+
       // Update local state immediately for responsive UI
-      setEpisodes(prevEpisodes => 
-        prevEpisodes.map(episode => 
-          episode.id === episodeId 
-            ? { ...episode, status: newStatus }
-            : episode
+      setEpisodes(prevEpisodes =>
+        prevEpisodes.map(episode =>
+          episode.id === episodeId ? { ...episode, status: newStatus } : episode
         )
-      );
-      
+      )
+
       // Update selected episode if it's the one being changed
       if (selectedEpisode?.id === episodeId) {
-        setSelectedEpisode(prev => prev ? { ...prev, status: newStatus } : null);
+        setSelectedEpisode(prev =>
+          prev ? { ...prev, status: newStatus } : null
+        )
       }
-      
+
       // Refresh podcasts to update episode counts
-      await loadPodcasts();
-      
-      console.log(`User Story #5: Episode ${episodeId} status updated to ${newStatus}`);
+      await loadPodcasts()
     } catch (err) {
-      console.error("Failed to update episode status:", err);
-      setError(`Failed to update episode status: ${err}`);
+      // eslint-disable-next-line no-console
+      console.error('Failed to update episode status:', err)
+      setError(`Failed to update episode status: ${err}`)
     }
   }
 
   function formatDuration(seconds?: number): string {
-    if (!seconds) return "Unknown";
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
+    if (!seconds) return 'Unknown'
+
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+
     if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
     } else {
-      return `${minutes}:${secs.toString().padStart(2, '0')}`;
+      return `${minutes}:${secs.toString().padStart(2, '0')}`
     }
   }
 
   function formatDate(dateStr?: string): string {
-    if (!dateStr) return "Unknown date";
-    
+    if (!dateStr) return 'Unknown date'
+
     try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString();
+      const date = new Date(dateStr)
+      return date.toLocaleDateString()
     } catch {
-      return dateStr;
+      return dateStr
     }
   }
 
   function getStatusIcon(status: string): string {
     switch (status) {
-      case "new": return "🔴"; // Red circle for new
-      case "unlistened": return "🔵"; // Blue circle for unlistened  
-      case "listened": return "✅"; // Green checkmark for listened
-      default: return "❓";
+      case 'new':
+        return '🔴' // Red circle for new
+      case 'unlistened':
+        return '🔵' // Blue circle for unlistened
+      case 'listened':
+        return '✅' // Green checkmark for listened
+      default:
+        return '❓'
     }
   }
 
   function getTotalNewEpisodes(): number {
-    return podcasts.reduce((total, podcast) => total + podcast.new_episode_count, 0);
+    return podcasts.reduce(
+      (total, podcast) => total + podcast.new_episode_count,
+      0
+    )
   }
 
   return (
@@ -200,12 +209,15 @@ function App() {
             type="text"
             placeholder="Enter RSS feed URL..."
             value={rssUrl}
-            onChange={(e) => setRssUrl(e.target.value)}
+            onChange={e => setRssUrl(e.target.value)}
             disabled={addingPodcast}
-            onKeyPress={(e) => e.key === 'Enter' && addPodcast()}
+            onKeyPress={e => e.key === 'Enter' && addPodcast()}
           />
-          <button onClick={addPodcast} disabled={addingPodcast || !rssUrl.trim()}>
-            {addingPodcast ? "Adding..." : "Add Podcast"}
+          <button
+            onClick={addPodcast}
+            disabled={addingPodcast || !rssUrl.trim()}
+          >
+            {addingPodcast ? 'Adding...' : 'Add Podcast'}
           </button>
         </div>
         {error && <div className="error-message">{error}</div>}
@@ -216,9 +228,9 @@ function App() {
         {/* Left Sidebar - Podcast Folders */}
         <aside className="sidebar">
           <h2>Podcasts</h2>
-          
+
           {/* Combined Inbox - User Story #7 */}
-          <div 
+          <div
             className={`podcast-item ${!selectedPodcast ? 'selected' : ''}`}
             onClick={() => setSelectedPodcast(null)}
           >
@@ -231,8 +243,8 @@ function App() {
 
           {/* Individual Podcasts */}
           <div className="podcast-list">
-            {podcasts.map((podcast) => (
-              <div 
+            {podcasts.map(podcast => (
+              <div
                 key={podcast.id}
                 className={`podcast-item ${selectedPodcast?.id === podcast.id ? 'selected' : ''}`}
                 onClick={() => setSelectedPodcast(podcast)}
@@ -240,7 +252,9 @@ function App() {
                 <span className="podcast-icon">🎙️</span>
                 <span className="podcast-name">{podcast.name}</span>
                 {podcast.new_episode_count > 0 && (
-                  <span className="episode-count">({podcast.new_episode_count})</span>
+                  <span className="episode-count">
+                    ({podcast.new_episode_count})
+                  </span>
                 )}
               </div>
             ))}
@@ -258,9 +272,9 @@ function App() {
         <section className="episode-list-pane">
           <header className="pane-header">
             <h2>
-              {selectedPodcast 
-                ? `${selectedPodcast.name} Episodes` 
-                : "All New Episodes"}
+              {selectedPodcast
+                ? `${selectedPodcast.name} Episodes`
+                : 'All New Episodes'}
             </h2>
             <div className="episode-count-info">
               {episodes.length} episode{episodes.length !== 1 ? 's' : ''}
@@ -271,8 +285,8 @@ function App() {
             <div className="loading">Loading episodes...</div>
           ) : (
             <div className="episode-list">
-              {episodes.map((episode) => (
-                <div 
+              {episodes.map(episode => (
+                <div
                   key={episode.id}
                   className={`episode-item ${selectedEpisode?.id === episode.id ? 'selected' : ''}`}
                   onClick={() => setSelectedEpisode(episode)}
@@ -283,25 +297,37 @@ function App() {
                       {getStatusIcon(episode.status)}
                     </span>
                   </div>
-                  
+
                   <div className="episode-info">
                     <h3 className="episode-title">{episode.title}</h3>
                     <div className="episode-meta">
                       {!selectedPodcast && (
-                        <span className="podcast-name">{episode.podcast_name} • </span>
+                        <span className="podcast-name">
+                          {episode.podcast_name} •{' '}
+                        </span>
                       )}
-                      <span className="episode-date">{formatDate(episode.published_date)}</span>
+                      <span className="episode-date">
+                        {formatDate(episode.published_date)}
+                      </span>
                       {episode.duration && (
-                        <span className="episode-duration"> • {formatDuration(episode.duration)}</span>
+                        <span className="episode-duration">
+                          {' '}
+                          • {formatDuration(episode.duration)}
+                        </span>
                       )}
                     </div>
                   </div>
 
                   {/* User Story #5: Mark episodes as listened */}
-                  <div className="episode-actions" onClick={(e) => e.stopPropagation()}>
-                    <select 
+                  <div
+                    className="episode-actions"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <select
                       value={episode.status}
-                      onChange={(e) => updateEpisodeStatus(episode.id, e.target.value)}
+                      onChange={e =>
+                        updateEpisodeStatus(episode.id, e.target.value)
+                      }
                       className="status-selector"
                     >
                       <option value="new">New</option>
@@ -311,12 +337,12 @@ function App() {
                   </div>
                 </div>
               ))}
-              
+
               {episodes.length === 0 && !loading && (
                 <div className="empty-state">
-                  {selectedPodcast 
+                  {selectedPodcast
                     ? `No episodes found for ${selectedPodcast.name}`
-                    : "No new episodes across all podcasts"}
+                    : 'No new episodes across all podcasts'}
                 </div>
               )}
             </div>
@@ -347,7 +373,8 @@ function App() {
                   <div className="meta-row">
                     <span className="meta-label">Status:</span>
                     <span className="status-with-icon">
-                      {getStatusIcon(selectedEpisode.status)} {selectedEpisode.status}
+                      {getStatusIcon(selectedEpisode.status)}{' '}
+                      {selectedEpisode.status}
                     </span>
                   </div>
                 </div>
@@ -364,21 +391,33 @@ function App() {
                 <div className="status-controls">
                   <label>Mark as:</label>
                   <div className="status-buttons">
-                    <button 
-                      className={selectedEpisode.status === 'new' ? 'active' : ''}
-                      onClick={() => updateEpisodeStatus(selectedEpisode.id, 'new')}
+                    <button
+                      className={
+                        selectedEpisode.status === 'new' ? 'active' : ''
+                      }
+                      onClick={() =>
+                        updateEpisodeStatus(selectedEpisode.id, 'new')
+                      }
                     >
                       🔴 New
                     </button>
-                    <button 
-                      className={selectedEpisode.status === 'unlistened' ? 'active' : ''}
-                      onClick={() => updateEpisodeStatus(selectedEpisode.id, 'unlistened')}
+                    <button
+                      className={
+                        selectedEpisode.status === 'unlistened' ? 'active' : ''
+                      }
+                      onClick={() =>
+                        updateEpisodeStatus(selectedEpisode.id, 'unlistened')
+                      }
                     >
                       🔵 Unlistened
                     </button>
-                    <button 
-                      className={selectedEpisode.status === 'listened' ? 'active' : ''}
-                      onClick={() => updateEpisodeStatus(selectedEpisode.id, 'listened')}
+                    <button
+                      className={
+                        selectedEpisode.status === 'listened' ? 'active' : ''
+                      }
+                      onClick={() =>
+                        updateEpisodeStatus(selectedEpisode.id, 'listened')
+                      }
                     >
                       ✅ Listened
                     </button>
@@ -398,13 +437,16 @@ function App() {
           ) : (
             <div className="no-selection">
               <h2>Select an Episode</h2>
-              <p>Choose an episode from the list to view details and manage its status.</p>
+              <p>
+                Choose an episode from the list to view details and manage its
+                status.
+              </p>
             </div>
           )}
         </section>
       </main>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

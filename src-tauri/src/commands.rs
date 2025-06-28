@@ -596,18 +596,22 @@ pub async fn sync_episode_device_status(device_path: String) -> Result<DeviceSyn
     );
 
     let start_time = std::time::Instant::now();
-    
+
     // Get managers
     let db_lock = DATABASE.lock().await;
     let db = db_lock.as_ref().ok_or("Database not initialized")?;
-    
+
     let usb_manager = UsbManager::new();
 
     // Get episodes that should be on device according to database
-    let episodes_marked_on_device = db.get_episodes_on_device().await
+    let episodes_marked_on_device = db
+        .get_episodes_on_device()
+        .await
         .map_err(|e| format!("Failed to get episodes marked as on device: {}", e))?;
-    
-    let expected_filenames = db.get_on_device_episode_filenames().await
+
+    let expected_filenames = db
+        .get_on_device_episode_filenames()
+        .await
         .map_err(|e| format!("Failed to get expected filenames: {}", e))?;
 
     // Get actual device status
@@ -629,10 +633,14 @@ pub async fn sync_episode_device_status(device_path: String) -> Result<DeviceSyn
                 if let Some(ref local_path) = episode.local_file_path {
                     if let Some(filename) = std::path::Path::new(local_path).file_name() {
                         if filename.to_string_lossy() == *expected_filename {
-                            db.update_episode_on_device_status(episode.id, false).await
+                            db.update_episode_on_device_status(episode.id, false)
+                                .await
                                 .map_err(|e| format!("Failed to update episode status: {}", e))?;
                             updated_episodes += 1;
-                            log::info!("Updated episode {} on_device status to false (User Story #11)", episode.id);
+                            log::info!(
+                                "Updated episode {} on_device status to false (User Story #11)",
+                                episode.id
+                            );
                             break;
                         }
                     }
@@ -644,8 +652,12 @@ pub async fn sync_episode_device_status(device_path: String) -> Result<DeviceSyn
     let sync_duration_ms = start_time.elapsed().as_millis();
     let is_consistent = missing_from_device.is_empty();
 
-    log::info!("User Story #11 sync completed: {} files processed, {} episodes updated, consistent: {}", 
-               device_status_indicators.len(), updated_episodes, is_consistent);
+    log::info!(
+        "User Story #11 sync completed: {} files processed, {} episodes updated, consistent: {}",
+        device_status_indicators.len(),
+        updated_episodes,
+        is_consistent
+    );
 
     Ok(DeviceSyncReport {
         processed_files: device_status_indicators.len(),
@@ -719,11 +731,13 @@ pub async fn verify_episode_status_consistency(
     // Get managers
     let db_lock = DATABASE.lock().await;
     let db = db_lock.as_ref().ok_or("Database not initialized")?;
-    
+
     let usb_manager = UsbManager::new();
 
     // Get expected filenames from database
-    let expected_filenames = db.get_on_device_episode_filenames().await
+    let expected_filenames = db
+        .get_on_device_episode_filenames()
+        .await
         .map_err(|e| format!("Failed to get expected filenames: {}", e))?;
 
     // Get actual device files
@@ -751,8 +765,12 @@ pub async fn verify_episode_status_consistency(
 
     let is_consistent = missing_from_device.is_empty() && missing_from_database.is_empty();
 
-    log::info!("User Story #11 consistency check: {} files on device, {} in database, consistent: {}", 
-               device_status_indicators.len(), expected_filenames.len(), is_consistent);
+    log::info!(
+        "User Story #11 consistency check: {} files on device, {} in database, consistent: {}",
+        device_status_indicators.len(),
+        expected_filenames.len(),
+        is_consistent
+    );
 
     Ok(DeviceStatusConsistencyReport {
         files_found: device_status_indicators.len(),
