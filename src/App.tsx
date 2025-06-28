@@ -373,13 +373,26 @@ function App() {
             {/* User Story #12: Search for episodes within a podcast */}
             {selectedPodcast && (
               <div className="search-section">
-                <input
-                  type="text"
-                  placeholder="Search episodes..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className="search-input"
-                />
+                <div className="search-input-container">
+                  <input
+                    type="text"
+                    placeholder="Search episodes..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="search-input"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="search-clear-button"
+                      title="Clear search"
+                      aria-label="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
                 {isSearching && <span className="search-loading">⏳</span>}
                 {isSearchMode && (
                   <span className="search-results-count">

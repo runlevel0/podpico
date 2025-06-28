@@ -480,6 +480,51 @@ describe('App Component', () => {
         expect(descriptionReact!.closest('mark')).toHaveClass('search-highlight')
       })
     })
+
+    it('shows clear button when search query is entered and clears search when clicked', async () => {
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // initial get_episodes
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
+
+      render(<App />)
+
+      // Select podcast
+      await waitFor(() => {
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('Test Podcast'))
+
+      // Wait for search input to appear
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+      })
+
+      const searchInput = screen.getByPlaceholderText('Search episodes...')
+
+      // Initially, no clear button should be visible
+      expect(screen.queryByTitle('Clear search')).not.toBeInTheDocument()
+
+      // Enter search query
+      fireEvent.change(searchInput, { target: { value: 'test query' } })
+
+      // Clear button should now be visible
+      await waitFor(() => {
+        expect(screen.getByTitle('Clear search')).toBeInTheDocument()
+      })
+
+      // Click clear button
+      const clearButton = screen.getByTitle('Clear search')
+      fireEvent.click(clearButton)
+
+      // Search input should be cleared
+      expect(searchInput).toHaveValue('')
+
+      // Clear button should be hidden again
+      await waitFor(() => {
+        expect(screen.queryByTitle('Clear search')).not.toBeInTheDocument()
+      })
+    })
   })
 
   describe('Error Handling', () => {
