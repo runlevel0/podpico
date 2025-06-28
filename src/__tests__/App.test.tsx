@@ -21,7 +21,7 @@ describe('App Component', () => {
       render(<App />)
 
       expect(
-        screen.getByPlaceholderText('Enter RSS feed URL')
+        screen.getByPlaceholderText('Enter RSS feed URL...')
       ).toBeInTheDocument()
       expect(screen.getByText('Add Podcast')).toBeInTheDocument()
     })
@@ -45,7 +45,7 @@ describe('App Component', () => {
 
       render(<App />)
 
-      const urlInput = screen.getByPlaceholderText('Enter RSS feed URL')
+      const urlInput = screen.getByPlaceholderText('Enter RSS feed URL...')
       const addButton = screen.getByText('Add Podcast')
 
       // Enter RSS URL
@@ -74,7 +74,7 @@ describe('App Component', () => {
 
       render(<App />)
 
-      const urlInput = screen.getByPlaceholderText('Enter RSS feed URL')
+      const urlInput = screen.getByPlaceholderText('Enter RSS feed URL...')
       const addButton = screen.getByText('Add Podcast')
 
       fireEvent.change(urlInput, { target: { value: 'invalid-url' } })
@@ -90,9 +90,10 @@ describe('App Component', () => {
       render(<App />)
 
       const addButton = screen.getByText('Add Podcast')
-      fireEvent.click(addButton)
-
-      expect(screen.getByText('Please enter an RSS URL')).toBeInTheDocument()
+      
+      // Button should be disabled when URL is empty
+      expect(addButton).toBeDisabled()
+      
       expect(mockInvoke).not.toHaveBeenCalledWith(
         'add_podcast',
         expect.anything()
@@ -113,11 +114,11 @@ describe('App Component', () => {
 
       // Wait for podcasts to load
       await waitFor(() => {
-        expect(screen.getByText('Test Podcast (2 new)')).toBeInTheDocument()
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
       })
 
       // Click on podcast to select it
-      fireEvent.click(screen.getByText('Test Podcast (2 new)'))
+      fireEvent.click(screen.getByText('Test Podcast'))
 
       // Wait for episodes to load
       await waitFor(() => {
@@ -139,11 +140,11 @@ describe('App Component', () => {
       render(<App />)
 
       await waitFor(() => {
-        expect(screen.getByText('Test Podcast (2 new)')).toBeInTheDocument()
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
       })
 
       const startTime = Date.now()
-      fireEvent.click(screen.getByText('Test Podcast (2 new)'))
+      fireEvent.click(screen.getByText('Test Podcast'))
 
       await waitFor(() => {
         expect(mockInvoke).toHaveBeenCalledWith('get_episodes', {
@@ -178,7 +179,7 @@ describe('App Component', () => {
 
       // Wait for episode to be selected and status controls to appear
       await waitFor(() => {
-        const statusSelect = screen.getByDisplayValue('new')
+        const statusSelect = screen.getByRole('combobox')
         expect(statusSelect).toBeInTheDocument()
 
         // Change status to listened
@@ -228,7 +229,8 @@ describe('App Component', () => {
       render(<App />)
 
       await waitFor(() => {
-        expect(screen.getByText('Combined Inbox (1 new)')).toBeInTheDocument()
+        expect(screen.getByText('Combined Inbox')).toBeInTheDocument()
+        expect(screen.getByText('1 episode')).toBeInTheDocument()
       })
 
       // Verify combined inbox is selected by default

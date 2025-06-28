@@ -277,7 +277,7 @@ function App() {
                 : 'All New Episodes'}
             </h2>
             <div className="episode-count-info">
-              {episodes.length} episode{episodes.length !== 1 ? 's' : ''}
+              {episodes?.length || 0} episode{(episodes?.length || 0) !== 1 ? 's' : ''}
             </div>
           </header>
 
@@ -285,7 +285,7 @@ function App() {
             <div className="loading">Loading episodes...</div>
           ) : (
             <div className="episode-list">
-              {episodes.map(episode => (
+              {episodes?.map(episode => (
                 <div
                   key={episode.id}
                   className={`episode-item ${selectedEpisode?.id === episode.id ? 'selected' : ''}`}
@@ -338,7 +338,7 @@ function App() {
                 </div>
               ))}
 
-              {episodes.length === 0 && !loading && (
+              {(!episodes || episodes.length === 0) && !loading && (
                 <div className="empty-state">
                   {selectedPodcast
                     ? `No episodes found for ${selectedPodcast.name}`
