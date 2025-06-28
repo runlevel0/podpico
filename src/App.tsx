@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import './App.css'
 
@@ -162,7 +162,7 @@ function App() {
 
   // User Story #12: Search for episodes within a podcast
   // Acceptance Criteria: Search results appear within 2 seconds with highlighted text
-  async function searchEpisodes(query: string) {
+  const searchEpisodes = useCallback(async (query: string) => {
     if (!selectedPodcast) return
 
     setIsSearching(true)
@@ -201,7 +201,7 @@ function App() {
     } finally {
       setIsSearching(false)
     }
-  }
+  }, [selectedPodcast])
 
   // Debounced search effect for User Story #12
   // Acceptance Criteria: Search results appear within 2 seconds
@@ -213,7 +213,7 @@ function App() {
     }, 300) // 300ms debounce for responsive search
 
     return () => clearTimeout(debounceTimer)
-  }, [searchQuery, selectedPodcast])
+  }, [searchQuery, selectedPodcast, searchEpisodes])
 
   // Clear search when podcast selection changes
   useEffect(() => {
@@ -269,7 +269,7 @@ function App() {
 
   // User Story #12: Highlight matching text in search results
   // Acceptance Criteria: Matching text is highlighted in episode titles/descriptions
-  function highlightText(text: string, searchQuery: string): JSX.Element {
+  function highlightText(text: string, searchQuery: string): React.JSX.Element {
     if (!searchQuery.trim() || !text) {
       return <>{text}</>
     }
