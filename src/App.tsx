@@ -477,7 +477,10 @@ function App() {
           {selectedEpisode ? (
             <div className="episode-details">
               <header className="episode-header">
-                <h2>{selectedEpisode.title}</h2>
+                <h2>
+                  {/* User Story #12: Highlight search terms in episode details title */}
+                  {isSearchMode && searchQuery ? highlightText(selectedEpisode.title, searchQuery) : selectedEpisode.title}
+                </h2>
                 <div className="episode-meta-detailed">
                   <div className="meta-row">
                     <span className="meta-label">Podcast:</span>
@@ -506,7 +509,10 @@ function App() {
               {selectedEpisode.description && (
                 <div className="episode-description">
                   <h3>Description</h3>
-                  <p>{selectedEpisode.description}</p>
+                  <p>
+                    {/* User Story #12: Highlight search terms in episode description */}
+                    {isSearchMode && searchQuery ? highlightText(selectedEpisode.description, searchQuery) : selectedEpisode.description}
+                  </p>
                 </div>
               )}
 

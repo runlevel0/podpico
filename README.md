@@ -187,4 +187,3 @@ For development questions or issues:
 
 ---
 
-**Current Status**: Ready for User Story #10 implementation (Remove episodes from USB device) - USB transfer foundation complete

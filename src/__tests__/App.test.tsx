@@ -412,6 +412,74 @@ describe('App Component', () => {
         expect(screen.getByText('No episodes found matching "nonexistent"')).toBeInTheDocument()
       })
     })
+
+    it('highlights search terms in episode details when episode is selected from search results', async () => {
+      const mockSearchResults = [
+        { 
+          ...MOCK_EPISODE, 
+          title: 'Introduction to React Testing',
+          description: 'This episode covers React testing fundamentals and best practices for testing React components.'
+        }
+      ]
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // initial get_episodes
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
+        .mockResolvedValueOnce(mockSearchResults) // search_episodes
+
+      render(<App />)
+
+      // Select podcast
+      await waitFor(() => {
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByText('Test Podcast'))
+
+      // Wait for search input to appear
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+      })
+
+      // Perform search
+      const searchInput = screen.getByPlaceholderText('Search episodes...')
+      fireEvent.change(searchInput, { target: { value: 'React' } })
+
+      // Wait for search results to appear
+      await waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
+          podcastId: 1,
+          searchQuery: 'React',
+        })
+      }, { timeout: 1000 })
+
+      // Wait for search results to appear and click on the episode item to select it
+      await waitFor(() => {
+        // Verify search results are displayed
+        expect(screen.getByText('React')).toBeInTheDocument()
+        // Click on the episode item (using the status icon as a reliable click target)
+        const episodeItem = screen.getByTitle('new').closest('.episode-item')
+        expect(episodeItem).toBeInTheDocument()
+        fireEvent.click(episodeItem!)
+      })
+
+      // Wait for episode details to appear and verify search term highlighting
+      await waitFor(() => {
+        // Check that search term is highlighted in the episode details title
+        const detailsTitle = screen.getAllByText('React').find(el => 
+          el.closest('.episode-header') !== null
+        )
+        expect(detailsTitle).toBeInTheDocument()
+        expect(detailsTitle!.closest('mark')).toHaveClass('search-highlight')
+
+        // Check that search term is highlighted in the episode description
+        const descriptionReact = screen.getAllByText('React').find(el => 
+          el.closest('.episode-description') !== null
+        )
+        expect(descriptionReact).toBeInTheDocument()
+        expect(descriptionReact!.closest('mark')).toHaveClass('search-highlight')
+      })
+    })
   })
 
   describe('Error Handling', () => {
