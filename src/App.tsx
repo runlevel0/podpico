@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import './App.css'
+import SafeHtmlRenderer from './SafeHtmlRenderer'
 
 interface Podcast {
   id: number
@@ -522,10 +523,12 @@ function App() {
               {selectedEpisode.description && (
                 <div className="episode-description">
                   <h3>Description</h3>
-                  <p>
-                    {/* User Story #12: Highlight search terms in episode description */}
-                    {isSearchMode && searchQuery ? highlightText(selectedEpisode.description, searchQuery) : selectedEpisode.description}
-                  </p>
+                  {/* Render HTML content safely with search highlighting */}
+                  <SafeHtmlRenderer
+                    htmlContent={selectedEpisode.description}
+                    searchQuery={isSearchMode ? searchQuery : undefined}
+                    className="episode-description-content"
+                  />
                 </div>
               )}
 

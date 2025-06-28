@@ -412,6 +412,68 @@ body {
   margin: 0;
 }
 
+/* HTML content styling for podcast descriptions */
+.episode-description-content {
+  line-height: 1.6;
+  color: var(--text-color);
+}
+
+.episode-description-content p {
+  margin: 0 0 var(--spacing-md) 0;
+  line-height: 1.6;
+}
+
+.episode-description-content p:last-child {
+  margin-bottom: 0;
+}
+
+.episode-description-content br {
+  line-height: 1.6;
+}
+
+.episode-description-content a {
+  color: var(--primary-color);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.episode-description-content a:hover {
+  border-bottom-color: var(--primary-color);
+}
+
+.episode-description-content a:visited {
+  color: #8b5cf6;
+}
+
+.episode-description-content em,
+.episode-description-content i {
+  font-style: italic;
+}
+
+.episode-description-content strong,
+.episode-description-content b {
+  font-weight: 600;
+}
+
+.episode-description-content ul,
+.episode-description-content ol {
+  margin: var(--spacing-sm) 0;
+  padding-left: var(--spacing-lg);
+}
+
+.episode-description-content li {
+  margin: var(--spacing-xs) 0;
+  line-height: 1.5;
+}
+
+.episode-description-content mark.search-highlight {
+  background-color: rgba(255, 255, 0, 0.3);
+  color: var(--text-color);
+  padding: 1px 2px;
+  border-radius: 2px;
+}
+
 .episode-actions-detailed {
   margin-top: auto;
   padding-top: var(--spacing-lg);
