@@ -31,6 +31,16 @@ interface Episode {
   on_device: boolean
 }
 
+// User Story #3: Download Episodes - Progress tracking interface
+interface DownloadProgress {
+  episode_id: number
+  downloaded_bytes: number
+  total_bytes: number
+  percentage: number
+  speed_bps: number
+  eta_seconds: number
+}
+
 function App() {
   const [podcasts, setPodcasts] = useState<Podcast[]>([])
   const [episodes, setEpisodes] = useState<Episode[]>([])
@@ -46,6 +56,16 @@ function App() {
   const [searchResults, setSearchResults] = useState<Episode[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isSearchMode, setIsSearchMode] = useState(false)
+  
+  // User Story #3: Download Episodes - State management
+  const [downloadingEpisodes, setDownloadingEpisodes] = useState<Set<number>>(new Set())
+  const [downloadProgress, setDownloadProgress] = useState<Map<number, DownloadProgress>>(new Map())
+  const [downloadErrors, setDownloadErrors] = useState<Map<number, string>>(new Map())
+
+  // User Story #4: Remove Podcasts - State management
+  const [removingPodcasts, setRemovingPodcasts] = useState<Set<number>>(new Set())
+  const [removeErrors, setRemoveErrors] = useState<Map<number, string>>(new Map())
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState<number | null>(null)
 
   // Load podcasts on component mount
   useEffect(() => {
@@ -262,6 +282,7 @@ function App() {
   }
 
   function getTotalNewEpisodes(): number {
+    if (!podcasts) return 0
     return podcasts.reduce(
       (total, podcast) => total + podcast.new_episode_count,
       0
@@ -291,6 +312,208 @@ function App() {
         )}
       </>
     )
+  }
+
+  // User Story #3: Download Episodes - Core functionality
+  // Acceptance Criteria: Progress tracking, file existence validation, error messages
+  async function downloadEpisode(episode: Episode) {
+    if (downloadingEpisodes.has(episode.id)) {
+      return // Already downloading
+    }
+
+    // Clear any previous error for this episode
+    setDownloadErrors(prev => {
+      const newErrors = new Map(prev)
+      newErrors.delete(episode.id)
+      return newErrors
+    })
+
+    // Mark episode as downloading
+    setDownloadingEpisodes(prev => new Set(prev).add(episode.id))
+
+    try {
+      // Start download
+      await invoke('download_episode', {
+        episodeId: episode.id,
+      })
+
+      // Start progress tracking
+      startProgressTracking(episode.id)
+
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to start download:', err)
+      setDownloadErrors(prev => new Map(prev).set(episode.id, `Download failed: ${err}`))
+      setDownloadingEpisodes(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(episode.id)
+        return newSet
+      })
+    }
+  }
+
+  // User Story #3: Progress tracking for download episodes
+  // Acceptance Criteria: Progress indicators with percentage display
+  function startProgressTracking(episodeId: number) {
+    const progressInterval = setInterval(async () => {
+      try {
+        const progress: DownloadProgress = await invoke('get_download_progress', {
+          episodeId,
+        })
+
+        // Validate progress data before setting state
+        if (progress && typeof progress.percentage === 'number') {
+          setDownloadProgress(prev => new Map(prev).set(episodeId, progress))
+
+          // Check if download is complete (100% or episode is now downloaded)
+          if (progress.percentage >= 100) {
+            clearInterval(progressInterval)
+            
+            // Remove from downloading set
+            setDownloadingEpisodes(prev => {
+              const newSet = new Set(prev)
+              newSet.delete(episodeId)
+              return newSet
+            })
+
+            // Clear progress tracking
+            setDownloadProgress(prev => {
+              const newMap = new Map(prev)
+              newMap.delete(episodeId)
+              return newMap
+            })
+
+            // Refresh episodes to update downloaded status
+            if (selectedPodcast) {
+              await loadEpisodes(selectedPodcast.id)
+            } else {
+              await loadEpisodes(null)
+            }
+
+            // Refresh podcasts to update counts
+            await loadPodcasts()
+          }
+        } else {
+          // Invalid progress data - stop tracking
+          throw new Error('Invalid progress data received')
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to get download progress:', err)
+        clearInterval(progressInterval)
+        
+        setDownloadErrors(prev => new Map(prev).set(episodeId, `Progress tracking failed: ${err}`))
+        
+        setDownloadingEpisodes(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(episodeId)
+          return newSet
+        })
+        
+        setDownloadProgress(prev => {
+          const newMap = new Map(prev)
+          newMap.delete(episodeId)
+          return newMap
+        })
+      }
+    }, 1000) // Update progress every second
+  }
+
+  // User Story #3: Format file size for display
+  function formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes'
+    
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  // User Story #3: Format download speed for display
+  function formatSpeed(bytesPerSecond: number): string {
+    return formatFileSize(bytesPerSecond) + '/s'
+  }
+
+  // User Story #3: Format time remaining for display
+  function formatTimeRemaining(seconds: number): string {
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = Math.round(seconds % 60)
+      return `${minutes}m ${remainingSeconds}s`
+    } else {
+      const hours = Math.floor(seconds / 3600)
+      const minutes = Math.floor((seconds % 3600) / 60)
+      return `${hours}h ${minutes}m`
+    }
+  }
+
+  // User Story #4: Remove Podcasts - Core functionality
+  // Acceptance Criteria: Confirmation dialog, cleanup options, immediate UI updates
+  async function removePodcast(podcastId: number) {
+    if (removingPodcasts.has(podcastId)) {
+      return // Already removing
+    }
+
+    // Clear any previous error for this podcast
+    setRemoveErrors(prev => {
+      const newErrors = new Map(prev)
+      newErrors.delete(podcastId)
+      return newErrors
+    })
+
+    // Mark podcast as being removed
+    setRemovingPodcasts(prev => new Set(prev).add(podcastId))
+
+    try {
+      // Call backend to remove podcast
+      await invoke('remove_podcast', {
+        podcastId,
+      })
+
+      // Hide confirmation dialog
+      setShowRemoveConfirm(null)
+
+      // Refresh podcasts to update UI
+      await loadPodcasts()
+
+      // Clear selection if this podcast was selected
+      if (selectedPodcast?.id === podcastId) {
+        setSelectedPodcast(null)
+        setSelectedEpisode(null)
+        setEpisodes([])
+      }
+
+      // Refresh combined inbox if that's selected
+      if (!selectedPodcast) {
+        await loadEpisodes(null)
+      }
+
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to remove podcast:', err)
+      setRemoveErrors(prev => new Map(prev).set(podcastId, `Remove failed: ${err}`))
+    } finally {
+      // Remove from removing set
+      setRemovingPodcasts(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(podcastId)
+        return newSet
+      })
+    }
+  }
+
+  // User Story #4: Handle remove confirmation
+  function handleRemoveClick(podcastId: number, event: React.MouseEvent) {
+    event.stopPropagation() // Prevent podcast selection
+    setShowRemoveConfirm(podcastId)
+  }
+
+  // User Story #4: Cancel remove operation
+  function cancelRemove() {
+    setShowRemoveConfirm(null)
   }
 
   return (
@@ -337,24 +560,66 @@ function App() {
 
           {/* Individual Podcasts */}
           <div className="podcast-list">
-            {podcasts.map(podcast => (
+            {podcasts?.map(podcast => (
               <div
                 key={podcast.id}
                 className={`podcast-item ${selectedPodcast?.id === podcast.id ? 'selected' : ''}`}
                 onClick={() => setSelectedPodcast(podcast)}
               >
-                <span className="podcast-icon">🎙️</span>
-                <span className="podcast-name">{podcast.name}</span>
-                {podcast.new_episode_count > 0 && (
-                  <span className="episode-count">
-                    ({podcast.new_episode_count})
-                  </span>
+                <div className="podcast-main">
+                  <span className="podcast-icon">🎙️</span>
+                  <span className="podcast-name">{podcast.name}</span>
+                  {podcast.new_episode_count > 0 && (
+                    <span className="episode-count">
+                      ({podcast.new_episode_count})
+                    </span>
+                  )}
+                </div>
+                
+                {/* User Story #4: Remove podcast button */}
+                <div className="podcast-actions" onClick={e => e.stopPropagation()}>
+                  {removingPodcasts.has(podcast.id) ? (
+                    <span className="removing-indicator" title="Removing podcast...">
+                      ⏳
+                    </span>
+                  ) : (
+                    <button
+                      className="remove-podcast-button"
+                      onClick={e => handleRemoveClick(podcast.id, e)}
+                      title={`Remove ${podcast.name}`}
+                      aria-label={`Remove ${podcast.name}`}
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </div>
+
+                {/* User Story #4: Show remove errors */}
+                {removeErrors.has(podcast.id) && (
+                  <div className="podcast-error" onClick={e => e.stopPropagation()}>
+                    <span className="error-message">
+                      {removeErrors.get(podcast.id)}
+                    </span>
+                    <button
+                      className="retry-button"
+                      onClick={() => {
+                        setRemoveErrors(prev => {
+                          const newErrors = new Map(prev)
+                          newErrors.delete(podcast.id)
+                          return newErrors
+                        })
+                      }}
+                      title="Dismiss error"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
           </div>
 
-          {podcasts.length === 0 && (
+          {(podcasts?.length || 0) === 0 && (
             <div className="empty-state">
               <p>No podcasts yet.</p>
               <p>Add your first podcast using the form above!</p>
@@ -447,6 +712,28 @@ function App() {
                         <span className="episode-duration">
                           {' '}
                           • {formatDuration(episode.duration)}
+                        </span>
+                      )}
+                      
+                      {/* User Story #3: Download status indicators in episode list */}
+                      {episode.downloaded && (
+                        <span className="download-indicator downloaded">
+                          • 📥 Downloaded
+                        </span>
+                      )}
+                      {downloadingEpisodes.has(episode.id) && (
+                        <span className="download-indicator downloading">
+                          • ⏳ Downloading
+                          {downloadProgress.has(episode.id) && (
+                            <span className="inline-progress">
+                              ({downloadProgress.get(episode.id)!.percentage.toFixed(0)}%)
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      {downloadErrors.has(episode.id) && (
+                        <span className="download-indicator error">
+                          • ⚠️ Download Failed
                         </span>
                       )}
                     </div>
@@ -569,10 +856,84 @@ function App() {
                   </div>
                 </div>
 
+                <div className="download-actions">
+                  {/* User Story #3: Download Episodes - Functional implementation */}
+                  {selectedEpisode.downloaded ? (
+                    <div className="download-status">
+                      <span className="download-complete">
+                        ✅ Downloaded
+                      </span>
+                      {selectedEpisode.local_file_path && (
+                        <small className="file-path">
+                          {selectedEpisode.local_file_path}
+                        </small>
+                      )}
+                    </div>
+                  ) : downloadingEpisodes.has(selectedEpisode.id) ? (
+                    <div className="download-progress-container">
+                      <div className="download-progress-header">
+                        <span>📥 Downloading...</span>
+                        {downloadProgress.has(selectedEpisode.id) && (
+                          <span className="progress-percentage">
+                            {downloadProgress.get(selectedEpisode.id)!.percentage.toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                      
+                      {downloadProgress.has(selectedEpisode.id) && (
+                        <div className="download-progress-details">
+                          <div className="progress-bar">
+                            <div 
+                              className="progress-fill"
+                              style={{ 
+                                width: `${downloadProgress.get(selectedEpisode.id)!.percentage}%` 
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="progress-info">
+                            <span className="download-size">
+                              {formatFileSize(downloadProgress.get(selectedEpisode.id)!.downloaded_bytes)} / {formatFileSize(downloadProgress.get(selectedEpisode.id)!.total_bytes)}
+                            </span>
+                            <span className="download-speed">
+                              {formatSpeed(downloadProgress.get(selectedEpisode.id)!.speed_bps)}
+                            </span>
+                            <span className="download-eta">
+                              ETA: {formatTimeRemaining(downloadProgress.get(selectedEpisode.id)!.eta_seconds)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      className="download-button"
+                      onClick={() => downloadEpisode(selectedEpisode)}
+                      title="Download this episode to your computer"
+                    >
+                      📥 Download Episode
+                    </button>
+                  )}
+                  
+                  {/* User Story #3: Download error handling */}
+                  {downloadErrors.has(selectedEpisode.id) && (
+                    <div className="download-error">
+                      <span className="error-icon">⚠️</span>
+                      <span className="error-message">
+                        {downloadErrors.get(selectedEpisode.id)}
+                      </span>
+                      <button
+                        className="retry-button"
+                        onClick={() => downloadEpisode(selectedEpisode)}
+                        title="Retry download"
+                      >
+                        🔄 Retry
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <div className="future-actions">
-                  <button disabled title="Coming in User Story #3">
-                    📥 Download Episode
-                  </button>
                   <button disabled title="Coming in User Story #9">
                     📱 Transfer to Device
                   </button>
@@ -590,6 +951,71 @@ function App() {
           )}
         </section>
       </main>
+
+      {/* User Story #4: Remove Podcast Confirmation Dialog */}
+      {showRemoveConfirm && (
+        <div className="remove-confirm-overlay">
+          <div className="remove-confirm-dialog" role="dialog" aria-labelledby="remove-confirm-title">
+            <div className="remove-confirm-header">
+              <h3 id="remove-confirm-title">Remove Podcast</h3>
+            </div>
+            
+            <div className="remove-confirm-content">
+              <p>
+                Are you sure you want to remove{' '}
+                <strong>
+                  {podcasts?.find(p => p.id === showRemoveConfirm)?.name}
+                </strong>?
+              </p>
+              
+              <div className="remove-options">
+                <p className="remove-warning">
+                  ⚠️ This will permanently remove the podcast and all its episodes from your library.
+                </p>
+                
+                {/* Check if podcast has downloaded episodes */}
+                {episodes?.some(ep => ep.podcast_id === showRemoveConfirm && ep.downloaded) && (
+                  <div className="cleanup-warning">
+                    <p>
+                      📁 This podcast has downloaded episodes. They will be removed from your computer.
+                    </p>
+                  </div>
+                )}
+                
+                {/* Check if podcast has episodes on USB device */}
+                {episodes?.some(ep => ep.podcast_id === showRemoveConfirm && ep.on_device) && (
+                  <div className="device-warning">
+                    <p>
+                      📱 Some episodes from this podcast are on your USB device. They will remain there but won't be managed by PodPico anymore.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="remove-confirm-actions">
+              <button
+                className="cancel-button"
+                onClick={cancelRemove}
+                disabled={showRemoveConfirm ? removingPodcasts.has(showRemoveConfirm) : false}
+              >
+                Cancel
+              </button>
+              <button
+                className="remove-button"
+                onClick={() => showRemoveConfirm && removePodcast(showRemoveConfirm)}
+                disabled={showRemoveConfirm ? removingPodcasts.has(showRemoveConfirm) : false}
+              >
+                {showRemoveConfirm && removingPodcasts.has(showRemoveConfirm) ? (
+                  <>⏳ Removing...</>
+                ) : (
+                  <>🗑️ Remove Podcast</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

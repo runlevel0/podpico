@@ -740,3 +740,520 @@ select:focus {
   opacity: 0.7;
   transform: scale(0.98);
 }
+
+/* User Story #3: Download Episodes - Styling */
+
+/* Download actions container */
+.download-actions {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+/* Download button */
+.download-button {
+  background-color: #22c55e;
+  color: white;
+  border: none;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  transition: background-color 0.2s;
+}
+
+.download-button:hover {
+  background-color: #16a34a;
+}
+
+.download-button:disabled {
+  background-color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* Download status for completed downloads */
+.download-status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.download-complete {
+  color: #22c55e;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.file-path {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+/* Download progress container */
+.download-progress-container {
+  background-color: rgba(100, 108, 255, 0.05);
+  border: 1px solid rgba(100, 108, 255, 0.2);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+}
+
+.download-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.progress-percentage {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+/* Progress bar */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: var(--spacing-sm);
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: var(--primary-color);
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+/* Progress information */
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.download-size, .download-speed, .download-eta {
+  white-space: nowrap;
+}
+
+/* Download error handling */
+.download-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.error-icon {
+  font-size: 1.2rem;
+}
+
+.error-message {
+  flex: 1;
+  color: #ef4444;
+  font-size: 0.9rem;
+  margin: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  position: static;
+}
+
+.retry-button {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.retry-button:hover {
+  background-color: #dc2626;
+}
+
+/* Download indicators in episode list */
+.download-indicator {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.download-indicator.downloaded {
+  color: #22c55e;
+}
+
+.download-indicator.downloading {
+  color: #f59e0b;
+}
+
+.download-indicator.error {
+  color: #ef4444;
+}
+
+.inline-progress {
+  font-weight: 600;
+}
+
+/* Responsive design for download section */
+@media (max-width: 768px) {
+  .download-progress-container {
+    padding: var(--spacing-sm);
+  }
+  
+  .download-progress-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+  }
+  
+  .progress-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .download-error {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .error-message {
+    margin-bottom: var(--spacing-sm);
+  }
+}
+
+/* User Story #4: Remove Podcasts - CSS Styling */
+
+/* Override podcast item layout for remove functionality */
+.podcast-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  margin-bottom: 2px;
+  transition: background-color 0.2s;
+  position: relative;
+}
+
+.podcast-main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding-right: 40px; /* Space for actions */
+}
+
+.podcast-actions {
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-sm);
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.podcast-item:hover .podcast-actions {
+  opacity: 1;
+}
+
+.podcast-item.selected .podcast-actions {
+  opacity: 1;
+}
+
+/* Remove podcast button */
+.remove-podcast-button {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  border-radius: var(--border-radius);
+  padding: 4px 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+}
+
+.remove-podcast-button:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: scale(1.05);
+}
+
+.remove-podcast-button:active {
+  transform: scale(0.95);
+}
+
+/* Removing indicator */
+.removing-indicator {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  animation: spin 2s linear infinite;
+}
+
+/* Podcast error messages */
+.podcast-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+}
+
+.podcast-error .error-message {
+  flex: 1;
+  color: #ef4444;
+  font-size: 0.8rem;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  position: static;
+}
+
+.podcast-error .retry-button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+
+.podcast-error .retry-button:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Remove confirmation dialog */
+.remove-confirm-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.remove-confirm-dialog {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  animation: slideIn 0.2s ease-out;
+}
+
+.remove-confirm-header {
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.remove-confirm-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.remove-confirm-content {
+  padding: var(--spacing-lg);
+}
+
+.remove-confirm-content p {
+  margin: 0 0 var(--spacing-md) 0;
+  line-height: 1.5;
+  color: var(--text-color);
+}
+
+.remove-options {
+  margin-top: var(--spacing-lg);
+}
+
+.remove-warning {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  color: #ef4444;
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.cleanup-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  color: #f59e0b;
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.device-warning {
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  color: #3b82f6;
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.cleanup-warning p,
+.device-warning p {
+  margin: 0;
+}
+
+.remove-confirm-actions {
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+}
+
+.cancel-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background-color: var(--surface-color);
+  border-color: var(--text-muted);
+}
+
+.cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.remove-button {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.remove-button:hover:not(:disabled) {
+  background-color: #dc2626;
+  transform: translateY(-1px);
+}
+
+.remove-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Dialog animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile responsiveness for remove functionality */
+@media (max-width: 768px) {
+  .remove-confirm-dialog {
+    width: 95%;
+    max-width: none;
+  }
+  
+  .remove-confirm-content,
+  .remove-confirm-header,
+  .remove-confirm-actions {
+    padding: var(--spacing-md);
+  }
+  
+  .remove-confirm-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .cancel-button,
+  .remove-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .podcast-actions {
+    position: static;
+    opacity: 1;
+    margin-top: var(--spacing-sm);
+    transform: none;
+    justify-content: flex-end;
+  }
+  
+  .podcast-main {
+    padding-right: 0;
+  }
+}
