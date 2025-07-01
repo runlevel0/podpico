@@ -129,7 +129,7 @@ npm run lint || echo "Frontend linting not configured yet"
 
 # MANDATORY: Run all tests and ensure they pass
 cargo test --all
-npm test || echo "Frontend tests not configured yet"
+npm run test:run || echo "Frontend tests not configured yet"
 
 # Test basic compilation with zero warnings
 cd src-tauri && cargo check --all-targets --all-features
@@ -196,6 +196,35 @@ npm run lint
 # 5. Security audit
 cargo audit || echo "Consider running: cargo install cargo-audit"
 ```
+
+### 🤖 Non-Interactive Testing for AI Agents
+**CRITICAL**: AI agents must use non-interactive test commands to avoid stalling automated workflows.
+
+```bash
+# ✅ CORRECT: Non-interactive test commands (exit after completion)
+npm run test:run            # Run all tests once and exit  
+npm run test:coverage       # Run tests with coverage report
+npm run test:ci            # Run tests with verbose output (ideal for CI/debugging)
+
+# ❌ WRONG: Interactive commands (will stall AI agents)
+npm test                   # Runs in watch mode, waits for user input
+
+# Backend tests (always non-interactive)
+cargo test --all          # Always exits after completion
+```
+
+**Command Line Options for Additional Control**:
+```bash
+# Pass additional flags to vitest
+npm test -- --run                    # Force non-interactive mode
+npm test -- --run --reporter=verbose # Non-interactive with verbose output
+npm test -- --run --coverage         # Non-interactive with coverage
+```
+
+**Why This Matters**: 
+- `npm test` runs Vitest in watch mode (interactive)
+- `npm run test:run` runs `vitest run` which is non-interactive and exits
+- AI agents need commands that return proper exit codes without user interaction
 
 ### Test-First Development Protocol
 **MANDATORY: Write tests BEFORE implementing features**

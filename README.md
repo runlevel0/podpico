@@ -77,6 +77,26 @@ cd src-tauri && cargo check
 cd src-tauri && cargo test
 ```
 
+### Testing
+```bash
+# Run all tests (interactive mode with watch)
+npm test
+
+# Run all tests once and exit (non-interactive, perfect for AI agents)
+npm run test:run
+
+# Run tests with coverage report
+npm run test:coverage
+
+# Run tests with verbose output (ideal for CI/debugging)
+npm run test:ci
+
+# Backend tests only
+cd src-tauri && cargo test
+```
+
+**For AI Agents and Automation**: Always use `npm run test:run` to avoid interactive watch mode that can stall automated workflows.
+
 ## 📁 Project Structure
 
 ```
