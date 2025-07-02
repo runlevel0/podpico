@@ -41,6 +41,16 @@ interface DownloadProgress {
   eta_seconds: number
 }
 
+// User Story #8: USB Device Management - Interface for USB devices
+interface UsbDevice {
+  id: string
+  name: string
+  path: string
+  total_space: number
+  available_space: number
+  is_connected: boolean
+}
+
 function App() {
   const [podcasts, setPodcasts] = useState<Podcast[]>([])
   const [episodes, setEpisodes] = useState<Episode[]>([])
@@ -67,9 +77,19 @@ function App() {
   const [removeErrors, setRemoveErrors] = useState<Map<number, string>>(new Map())
   const [showRemoveConfirm, setShowRemoveConfirm] = useState<number | null>(null)
 
+  // User Story #8: USB Device Management - State management
+  const [usbDevices, setUsbDevices] = useState<UsbDevice[]>([])
+  const [usbLoading, setUsbLoading] = useState(false)
+  const [usbError, setUsbError] = useState<string | null>(null)
+
   // Load podcasts on component mount
   useEffect(() => {
     loadPodcasts()
+  }, [])
+
+  // User Story #8: Load USB devices on component mount
+  useEffect(() => {
+    loadUsbDevices()
   }, [])
 
   // Load episodes when podcast selection changes
@@ -121,6 +141,36 @@ function App() {
       setError(`Failed to load episodes: ${err}`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // User Story #8: Load USB devices from backend
+  async function loadUsbDevices() {
+    setUsbLoading(true)
+    setUsbError(null)
+    
+    try {
+      // User Story #8 Acceptance Criteria: Detection within 5 seconds
+      const startTime = Date.now()
+      
+      const devices: UsbDevice[] = await invoke('get_usb_devices')
+      
+      const detectionTime = Date.now() - startTime
+      if (detectionTime > 5000) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `User Story #8: USB detection took ${detectionTime}ms, should be under 5 seconds`
+        )
+      }
+      
+      setUsbDevices(devices)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load USB devices:', err)
+      setUsbError(`Failed to detect USB devices: ${err}`)
+      setUsbDevices([]) // Clear devices on error
+    } finally {
+      setUsbLoading(false)
     }
   }
 
@@ -440,14 +490,31 @@ function App() {
     if (seconds < 60) {
       return `${Math.round(seconds)}s`
     } else if (seconds < 3600) {
-      const minutes = Math.floor(seconds / 60)
-      const remainingSeconds = Math.round(seconds % 60)
-      return `${minutes}m ${remainingSeconds}s`
+      const minutes = Math.round(seconds / 60)
+      return `${minutes}m`
     } else {
-      const hours = Math.floor(seconds / 3600)
-      const minutes = Math.floor((seconds % 3600) / 60)
-      return `${hours}h ${minutes}m`
+      const hours = Math.round(seconds / 3600)
+      return `${hours}h`
     }
+  }
+
+  // User Story #8: USB Device Storage Formatting Functions
+  function formatStorageSize(bytes: number): string {
+    if (bytes === 0) return '0 B'
+    
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    const k = 1024
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    const size = bytes / Math.pow(k, i)
+    
+    // Format to 1 decimal place for readability
+    return `${size.toFixed(1)} ${units[i]}`
+  }
+
+  function calculateStorageUsagePercentage(device: UsbDevice): number {
+    if (device.total_space === 0) return 0
+    const usedSpace = device.total_space - device.available_space
+    return Math.round((usedSpace / device.total_space) * 100)
   }
 
   // User Story #4: Remove Podcasts - Core functionality
@@ -625,6 +692,69 @@ function App() {
               <p>Add your first podcast using the form above!</p>
             </div>
           )}
+
+          {/* User Story #8: USB Device Section */}
+          <div className="usb-device-section">
+            <h3>USB Device</h3>
+            
+            {usbLoading ? (
+              <div className="usb-loading">
+                <span>🔍 Detecting devices...</span>
+              </div>
+            ) : usbError ? (
+              <div className="usb-error">
+                <span>⚠️ {usbError}</span>
+                <button
+                  className="retry-button"
+                  onClick={loadUsbDevices}
+                  data-testid="usb-retry-button"
+                  title="Retry USB detection"
+                >
+                  🔄 Retry
+                </button>
+              </div>
+            ) : (!usbDevices || usbDevices.length === 0) ? (
+              <div className="usb-no-device">
+                <span>📱 No device connected</span>
+              </div>
+            ) : (
+              <div className="usb-device-list">
+                {usbDevices.map(device => (
+                  <div key={device.id} className="usb-device-item">
+                    <div className="device-info">
+                      <div className="device-header">
+                        <span className="device-icon">📱</span>
+                        <span className="device-name">{device.name}</span>
+                      </div>
+                      <div className="storage-info">
+                        <div className="storage-text">
+                          {formatStorageSize(device.available_space)} available of {formatStorageSize(device.total_space)}
+                        </div>
+                        <div 
+                          className="storage-progress-bar"
+                          role="progressbar"
+                          aria-label={`USB device storage: ${calculateStorageUsagePercentage(device)}% used`}
+                          aria-valuenow={calculateStorageUsagePercentage(device)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <div 
+                            className="storage-progress-fill"
+                            style={{
+                              width: `${calculateStorageUsagePercentage(device)}%`
+                            }}
+                          />
+                        </div>
+                        <div className="storage-percentage">
+                          {calculateStorageUsagePercentage(device)}% used
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </aside>
 
         {/* Middle Pane - Episode List */}
@@ -662,7 +792,7 @@ function App() {
                 {isSearching && <span className="search-loading">⏳</span>}
                 {isSearchMode && (
                   <span className="search-results-count">
-                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                    {searchResults?.length || 0} result{(searchResults?.length || 0) !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
@@ -670,7 +800,7 @@ function App() {
             
             <div className="episode-count-info">
               {isSearchMode
-                ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}`
+                ? `${searchResults?.length || 0} result${(searchResults?.length || 0) !== 1 ? 's' : ''}`
                 : `${episodes?.length || 0} episode${(episodes?.length || 0) !== 1 ? 's' : ''}`}
             </div>
           </header>
@@ -682,7 +812,8 @@ function App() {
           ) : (
             <div className="episode-list">
               {/* User Story #12: Show search results or regular episodes */}
-              {(isSearchMode ? searchResults : episodes)?.map(episode => (
+              {Array.isArray(isSearchMode ? searchResults : episodes) && 
+                (isSearchMode ? searchResults : episodes).map(episode => (
                 <div
                   key={episode.id}
                   className={`episode-item ${selectedEpisode?.id === episode.id ? 'selected' : ''}`}
@@ -760,7 +891,10 @@ function App() {
               ))}
 
               {/* User Story #12: Handle empty search results */}
-              {(isSearchMode ? searchResults.length === 0 : (!episodes || episodes.length === 0)) && !loading && !isSearching && (
+              {(isSearchMode 
+                ? (!Array.isArray(searchResults) || searchResults.length === 0) 
+                : (!Array.isArray(episodes) || episodes.length === 0)
+              ) && !loading && !isSearching && (
                 <div className="empty-state">
                   {isSearchMode
                     ? `No episodes found matching "${searchQuery}"`
@@ -926,6 +1060,7 @@ function App() {
                         className="retry-button"
                         onClick={() => downloadEpisode(selectedEpisode)}
                         title="Retry download"
+                        data-testid="download-retry-button"
                       >
                         🔄 Retry
                       </button>

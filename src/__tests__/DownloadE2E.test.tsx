@@ -374,6 +374,8 @@ describe('User Story #3: Download Episodes - End-to-End Integration Tests', () =
             return Promise.resolve(mockEpisodes.filter(ep => ep.status === 'New'))
           case 'download_episode':
             return Promise.reject(new Error('Network timeout: Unable to download episode'))
+          case 'get_usb_devices':
+            return Promise.resolve([]) // No USB devices to avoid interference
           default:
             return Promise.reject(new Error(`Unhandled command: ${command}`))
         }
@@ -401,7 +403,7 @@ describe('User Story #3: Download Episodes - End-to-End Integration Tests', () =
       // Wait for error state
       await waitFor(() => {
         expect(screen.getByText(/Download failed/)).toBeInTheDocument()
-        expect(screen.getByText('🔄 Retry')).toBeInTheDocument()
+        expect(screen.getByTestId('download-retry-button')).toBeInTheDocument()
       }, { timeout: 5000 })
 
       console.log('✅ Download error handling integration verified')
@@ -427,6 +429,8 @@ describe('User Story #3: Download Episodes - End-to-End Integration Tests', () =
             } else {
               return Promise.resolve() // Success on retry
             }
+          case 'get_usb_devices':
+            return Promise.resolve([]) // No USB devices to avoid interference
           default:
             return Promise.reject(new Error(`Unhandled command: ${command}`))
         }
@@ -457,7 +461,7 @@ describe('User Story #3: Download Episodes - End-to-End Integration Tests', () =
       })
 
       // Retry - should succeed
-      const retryButton = screen.getByText('🔄 Retry')
+      const retryButton = screen.getByTestId('download-retry-button')
       fireEvent.click(retryButton)
 
       await waitFor(() => {

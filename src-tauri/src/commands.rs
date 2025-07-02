@@ -297,30 +297,42 @@ pub async fn update_episode_status(episode_id: i64, status: String) -> Result<()
 /// User Story #12: Search for episodes within a podcast
 /// Acceptance Criteria: Search results appear within 2 seconds with highlighted text
 #[tauri::command]
-pub async fn search_episodes(podcast_id: i64, search_query: String) -> Result<Vec<Episode>, String> {
-    log::info!("Searching episodes in podcast {} for query: '{}' (User Story #12)", podcast_id, search_query);
+pub async fn search_episodes(
+    podcast_id: i64,
+    search_query: String,
+) -> Result<Vec<Episode>, String> {
+    log::info!(
+        "Searching episodes in podcast {} for query: '{}' (User Story #12)",
+        podcast_id,
+        search_query
+    );
 
     let db_lock = DATABASE.lock().await;
     let db = db_lock.as_ref().ok_or("Database not initialized")?;
 
     // Measure search performance for acceptance criteria validation
     let start_time = std::time::Instant::now();
-    
+
     let episodes = db
         .search_episodes(podcast_id, &search_query)
         .await
         .map_err(|e| format!("Failed to search episodes: {}", e))?;
 
     let elapsed = start_time.elapsed();
-    
+
     // Log performance metrics for User Story #12 acceptance criteria
-    log::info!("Search completed in {:.2}ms for {} results (User Story #12)", 
-               elapsed.as_millis(), episodes.len());
+    log::info!(
+        "Search completed in {:.2}ms for {} results (User Story #12)",
+        elapsed.as_millis(),
+        episodes.len()
+    );
 
     // Acceptance Criteria: Search results appear within 2 seconds
     if elapsed.as_secs() >= 2 {
-        log::warn!("Search performance warning: took {:.2}s, should be under 2 seconds (User Story #12)", 
-                   elapsed.as_secs_f64());
+        log::warn!(
+            "Search performance warning: took {:.2}s, should be under 2 seconds (User Story #12)",
+            elapsed.as_secs_f64()
+        );
     }
 
     Ok(episodes)
@@ -2134,8 +2146,7 @@ mod tests {
             "User Story #12: Should find exactly one episode with 'Rust'"
         );
         assert_eq!(
-            episodes[0].title,
-            "Introduction to Rust Programming",
+            episodes[0].title, "Introduction to Rust Programming",
             "User Story #12: Should find the correct episode"
         );
     }
@@ -2192,7 +2203,7 @@ mod tests {
             20,
             "User Story #12: Should find all episodes with 'Technology'"
         );
-        
+
         // Acceptance Criteria: Search results appear within 2 seconds
         assert!(
             elapsed.as_secs() < 2,
@@ -2347,8 +2358,7 @@ mod tests {
             "User Story #12: Should find episode regardless of case"
         );
         assert_eq!(
-            episodes[0].title,
-            "JavaScript Fundamentals",
+            episodes[0].title, "JavaScript Fundamentals",
             "User Story #12: Should find the correct episode"
         );
     }

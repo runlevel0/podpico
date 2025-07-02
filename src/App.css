@@ -1257,3 +1257,182 @@ select:focus {
     padding-right: 0;
   }
 }
+
+/* User Story #8: USB Device Management Styles */
+
+.usb-device-section {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.usb-device-section h3 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.usb-loading,
+.usb-no-device {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  color: var(--text-muted);
+  background-color: var(--background-color);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+}
+
+.usb-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.usb-error .retry-button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.usb-error .retry-button:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.usb-device-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.usb-device-item {
+  padding: var(--spacing-md);
+  background-color: var(--background-color);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.usb-device-item:hover {
+  background-color: rgba(100, 108, 255, 0.05);
+  border-color: rgba(100, 108, 255, 0.3);
+}
+
+.device-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.device-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.device-icon {
+  font-size: 1.2rem;
+  color: var(--primary-color);
+}
+
+.device-name {
+  font-weight: 500;
+  color: var(--text-color);
+  flex: 1;
+}
+
+.storage-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.storage-text {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.storage-progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--surface-color);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.storage-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #22c55e 0%, #eab308 70%, #ef4444 95%);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.storage-percentage {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Responsive adjustments for USB device section */
+@media (max-width: 768px) {
+  .usb-device-section {
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
+  }
+  
+  .usb-device-item {
+    padding: var(--spacing-sm);
+  }
+  
+  .storage-info {
+    gap: 6px;
+  }
+  
+  .storage-text {
+    font-size: 0.8rem;
+  }
+  
+  .storage-percentage {
+    font-size: 0.75rem;
+  }
+}
+
+/* High contrast mode support for accessibility */
+@media (prefers-contrast: high) {
+  .storage-progress-bar {
+    border: 2px solid var(--text-color);
+  }
+  
+  .storage-progress-fill {
+    background: var(--primary-color);
+  }
+  
+  .usb-device-item {
+    border: 2px solid var(--border-color);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .storage-progress-fill {
+    transition: none;
+  }
+  
+  .usb-device-item {
+    transition: none;
+  }
+}

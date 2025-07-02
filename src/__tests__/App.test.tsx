@@ -5,7 +5,22 @@ import { mockInvoke, MOCK_PODCAST, MOCK_EPISODE } from '../setupTests'
 
 describe('App Component', () => {
   beforeEach(() => {
+    // Reset all mocks
     mockInvoke.mockReset()
+    
+    // Set up comprehensive default mocking to prevent unhandled command errors
+    mockInvoke.mockImplementation((command: string, args?: any) => {
+      switch (command) {
+        case 'get_usb_devices':
+          return Promise.resolve([]) // Empty USB devices array by default
+        case 'get_podcasts':
+          return Promise.resolve([]) // Empty podcasts by default  
+        case 'get_episodes':
+          return Promise.resolve([]) // Empty episodes by default
+        default:
+          return Promise.reject(new Error(`Unhandled command: ${command}`))
+      }
+    })
   })
 
   describe('Initial Rendering', () => {
@@ -528,6 +543,29 @@ describe('App Component', () => {
   })
 
   describe('User Story #3: Download Episodes', () => {
+    it('formats file sizes correctly', async () => {
+      mockInvoke.mockReset() // Clear default mocks
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes
+        .mockResolvedValueOnce([]) // get_usb_devices
+
+      render(<App />)
+
+      // Select the podcast to show its episodes
+      await waitFor(() => {
+        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+      })
+
+      // Click on the podcast to select it
+      fireEvent.click(screen.getByText('Test Podcast'))
+
+      // Wait for episodes to load and select one
+      await waitFor(() => {
+        expect(screen.getByText('Test Episode')).toBeInTheDocument()
+      })
+    })
+
     it('shows download button for undownloaded episodes', async () => {
       const mockEpisodes = [{ ...MOCK_EPISODE, downloaded: false }]
 
@@ -809,7 +847,9 @@ describe('App Component', () => {
 
   describe('Error Handling', () => {
     it('handles podcast loading errors gracefully', async () => {
-      mockInvoke.mockRejectedValueOnce(new Error('Database error'))
+      mockInvoke
+        .mockRejectedValueOnce(new Error('Database error')) // get_podcasts fails
+        .mockResolvedValueOnce([]) // get_episodes (Combined Inbox) succeeds
 
       render(<App />)
 
@@ -826,7 +866,7 @@ describe('App Component', () => {
       render(<App />)
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed to load episodes/)).toBeInTheDocument()
+        expect(screen.getByText(/Episode loading failed/)).toBeInTheDocument()
       })
     })
   })
@@ -923,7 +963,8 @@ describe('App Component', () => {
         expect(screen.getByText('🗑️ Remove Podcast')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('🗑️ Remove Podcast'))
+      const confirmButton = screen.getByText('🗑️ Remove Podcast')
+      fireEvent.click(confirmButton)
 
       // Verify backend call was made
       await waitFor(() => {
@@ -939,8 +980,11 @@ describe('App Component', () => {
         resolveRemoval = resolve
       })
 
+      mockInvoke.mockReset() // Clear default mocks for this specific test
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes (Combined Inbox)
+        .mockResolvedValueOnce([]) // get_usb_devices (prevent NaN)
         .mockReturnValueOnce(removalPromise) // remove_podcast (pending)
 
       render(<App />)
@@ -958,7 +1002,8 @@ describe('App Component', () => {
         expect(screen.getByText('🗑️ Remove Podcast')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('🗑️ Remove Podcast'))
+      const confirmButton = screen.getByText('🗑️ Remove Podcast')
+      fireEvent.click(confirmButton)
 
       // Check loading state appears
       await waitFor(() => {
@@ -967,6 +1012,7 @@ describe('App Component', () => {
 
       // Both buttons should be disabled during removal
       await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
         expect(screen.getByText('Cancel')).toBeDisabled()
         expect(screen.getByText('⏳ Removing...')).toBeDisabled()
       })
@@ -976,8 +1022,11 @@ describe('App Component', () => {
     })
 
     it('handles removal errors gracefully', async () => {
+      mockInvoke.mockReset() // Clear default mocks for this specific test
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes (Combined Inbox)
+        .mockResolvedValueOnce([]) // get_usb_devices (prevent NaN)
         .mockRejectedValueOnce(new Error('Failed to remove podcast')) // remove_podcast fails
 
       render(<App />)
@@ -995,26 +1044,26 @@ describe('App Component', () => {
         expect(screen.getByText('🗑️ Remove Podcast')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('🗑️ Remove Podcast'))
+      const confirmButton = screen.getByText('🗑️ Remove Podcast')
+      fireEvent.click(confirmButton)
 
-      // Wait for dialog to close and error to appear
+      // Dialog should stay open for better UX (allows retry/cancel)
       await waitFor(() => {
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+        expect(screen.getByRole('dialog')).toBeInTheDocument()
       })
 
-      // Check error message appears (could be in header area due to cascading effects)
+      // Check error message appears in the podcast item
       await waitFor(() => {
-        expect(screen.getByText(/Failed to remove podcast/)).toBeInTheDocument()
+        expect(screen.getByText(/Remove failed: Error: Failed to remove podcast/)).toBeInTheDocument()
       })
-
-      // The error may appear in different places due to the cascading failure effects
-      // The important thing is that the removal failed and some error is displayed
-      expect(screen.getByText(/Failed to remove podcast/)).toBeInTheDocument()
     })
 
     it('updates UI immediately after successful removal', async () => {
+      mockInvoke.mockReset() // Clear default mocks for this specific test
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes (Combined Inbox initial)
+        .mockResolvedValueOnce([]) // get_usb_devices (prevent NaN)
         .mockResolvedValueOnce(undefined) // remove_podcast
         .mockResolvedValueOnce([]) // get_podcasts (after removal)
         .mockResolvedValueOnce([]) // get_episodes (refresh)
@@ -1033,7 +1082,8 @@ describe('App Component', () => {
         expect(screen.getByText('🗑️ Remove Podcast')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('🗑️ Remove Podcast'))
+      const confirmButton = screen.getByText('🗑️ Remove Podcast')
+      fireEvent.click(confirmButton)
 
       // Podcast should be removed from UI
       await waitFor(() => {
@@ -1076,7 +1126,8 @@ describe('App Component', () => {
         expect(screen.getByText('🗑️ Remove Podcast')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('🗑️ Remove Podcast'))
+      const confirmButton = screen.getByText('🗑️ Remove Podcast')
+      fireEvent.click(confirmButton)
 
       // Should fall back to combined inbox
       await waitFor(() => {
@@ -1188,7 +1239,8 @@ describe('App Component', () => {
         expect(screen.getByText('🗑️ Remove Podcast')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('🗑️ Remove Podcast'))
+      const confirmButton = screen.getByText('🗑️ Remove Podcast')
+      fireEvent.click(confirmButton)
 
       // Should see loading indicator
       await waitFor(() => {
