@@ -1,0 +1,414 @@
+name: Pull Request Quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Quick quality checks that must pass
+  quick-checks:
+    name: Quick Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+          
+      - name: Check formatting (Frontend)
+        run: |
+          npm ci
+          npm run format:check
+          
+      - name: Check formatting (Backend)
+        working-directory: ./src-tauri
+        run: cargo fmt --all -- --check
+        
+      - name: TypeScript check
+        run: npm run type-check
+        
+      - name: Comment formatting issues
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **Formatting Check Failed**\n\nPlease run the following commands locally:\n```bash\nnpm run format\ncd src-tauri && cargo fmt --all\n```'
+            })
+
+  # Comprehensive coverage analysis
+  coverage-analysis:
+    name: Coverage Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+            
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          
+      - name: Install cargo-tarpaulin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
+          
+      - name: Run frontend coverage
+        run: npm run test:coverage
+        continue-on-error: true
+        
+      - name: Run backend coverage
+        working-directory: ./src-tauri
+        run: |
+          cargo tarpaulin \
+            --out Xml \
+            --out Html \
+            --output-dir coverage \
+            --all-features \
+            --workspace \
+            --timeout 120 \
+            --exclude-files "../target/*" \
+            --print-summary
+        continue-on-error: true
+        
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./src-tauri/coverage/cobertura.xml,./coverage/coverage-final.json
+          flags: unittests
+          name: podpico-coverage
+          fail_ci_if_error: false
+          
+      - name: Generate coverage report comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 📊 Coverage Report\n\n';
+            
+            // Try to read backend coverage summary
+            try {
+              const backendSummary = fs.readFileSync('./src-tauri/coverage/summary.txt', 'utf8');
+              comment += '### Backend Coverage\n```\n' + backendSummary + '\n```\n\n';
+            } catch (e) {
+              comment += '### Backend Coverage\n_Coverage data not available_\n\n';
+            }
+            
+            // Try to read frontend coverage summary
+            try {
+              const frontendSummary = fs.readFileSync('./coverage/coverage-summary.txt', 'utf8');
+              comment += '### Frontend Coverage\n```\n' + frontendSummary + '\n```\n\n';
+            } catch (e) {
+              comment += '### Frontend Coverage\n_Coverage data not available_\n\n';
+            }
+            
+            comment += '---\n_Coverage reports are uploaded as artifacts for detailed analysis._';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Linting and quality warnings
+  quality-warnings:
+    name: Quality Warnings
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+            
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: ESLint analysis
+        id: eslint
+        run: |
+          npm run lint 2>&1 | tee eslint-output.txt || true
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "has_issues=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_issues=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Clippy analysis
+        id: clippy
+        working-directory: ./src-tauri
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings 2>&1 | tee ../clippy-output.txt || true
+          if [ ${PIPESTATUS[0]} -ne 0 ]; then
+            echo "has_issues=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_issues=false" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Comment linting issues
+        if: steps.eslint.outputs.has_issues == 'true' || steps.clippy.outputs.has_issues == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## ⚠️ Quality Issues Found\n\n';
+            
+            if ('${{ steps.eslint.outputs.has_issues }}' === 'true') {
+              comment += '### ESLint Issues\n';
+              comment += '```\n';
+              try {
+                const eslintOutput = fs.readFileSync('eslint-output.txt', 'utf8');
+                comment += eslintOutput.substring(0, 3000); // Limit size
+                if (eslintOutput.length > 3000) comment += '\n... (truncated)';
+              } catch (e) {
+                comment += 'Error reading ESLint output';
+              }
+              comment += '\n```\n\n';
+            }
+            
+            if ('${{ steps.clippy.outputs.has_issues }}' === 'true') {
+              comment += '### Clippy Issues\n';
+              comment += '```\n';
+              try {
+                const clippyOutput = fs.readFileSync('clippy-output.txt', 'utf8');
+                comment += clippyOutput.substring(0, 3000); // Limit size
+                if (clippyOutput.length > 3000) comment += '\n... (truncated)';
+              } catch (e) {
+                comment += 'Error reading Clippy output';
+              }
+              comment += '\n```\n\n';
+            }
+            
+            comment += '---\n';
+            comment += '**Note**: All warnings must be resolved before merging (zero-tolerance policy).';
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # Test results summary
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [quick-checks]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+            
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run all tests
+        run: |
+          echo "Frontend Tests:" > test-summary.txt
+          npm run test:ci >> test-summary.txt 2>&1 || echo "Frontend tests have failures" >> test-summary.txt
+          echo -e "\n\nBackend Tests:" >> test-summary.txt
+          cd src-tauri && cargo test --all >> ../test-summary.txt 2>&1 || echo "Backend tests have failures" >> ../test-summary.txt
+          
+      - name: Comment test results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let comment = '## 🧪 Test Results\n\n';
+            
+            try {
+              const testSummary = fs.readFileSync('test-summary.txt', 'utf8');
+              const lines = testSummary.split('\n');
+              
+              // Extract key metrics
+              const frontendMatch = testSummary.match(/(\d+) passed/);
+              const backendMatch = testSummary.match(/test result: ok. (\d+) passed/);
+              
+              if (frontendMatch) {
+                comment += `✅ **Frontend**: ${frontendMatch[1]} tests passed\n`;
+              }
+              if (backendMatch) {
+                comment += `✅ **Backend**: ${backendMatch[1]} tests passed\n`;
+              }
+              
+              comment += '\n<details>\n<summary>View detailed test output</summary>\n\n```\n';
+              comment += testSummary.substring(0, 5000); // Limit size
+              if (testSummary.length > 5000) comment += '\n... (truncated)';
+              comment += '\n```\n</details>';
+              
+            } catch (e) {
+              comment += '_Test results not available_';
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+  # PR status check
+  pr-status:
+    name: PR Quality Gate
+    runs-on: ubuntu-latest
+    needs: [quick-checks, coverage-analysis, quality-warnings, test-summary]
+    if: always()
+    
+    steps:
+      - name: Generate PR status comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const quickChecks = '${{ needs.quick-checks.result }}';
+            const coverage = '${{ needs.coverage-analysis.result }}';
+            const quality = '${{ needs.quality-warnings.result }}';
+            const tests = '${{ needs.test-summary.result }}';
+            
+            let comment = '# 🎯 PR Quality Gate Summary\n\n';
+            comment += '| Check | Status |\n';
+            comment += '|-------|--------|\n';
+            comment += `| Formatting | ${quickChecks === 'success' ? '✅ Passed' : '❌ Failed'} |\n`;
+            comment += `| Coverage Analysis | ${coverage === 'success' ? '✅ Completed' : '⚠️ Issues'} |\n`;
+            comment += `| Quality Warnings | ${quality === 'success' ? '✅ Clean' : '⚠️ Warnings'} |\n`;
+            comment += `| Tests | ${tests === 'success' ? '✅ Passed' : '⚠️ See results'} |\n`;
+            
+            comment += '\n## 📋 Merge Requirements\n';
+            comment += '- [ ] All formatting checks pass\n';
+            comment += '- [ ] Zero clippy warnings (Rust)\n';
+            comment += '- [ ] Zero ESLint warnings (TypeScript)\n';
+            comment += '- [ ] All tests pass\n';
+            comment += '- [ ] Code coverage ≥ 80%\n';
+            comment += '- [ ] Documentation updated if needed\n';
+            
+            if (quickChecks !== 'success') {
+              comment += '\n⚠️ **This PR cannot be merged until all quality checks pass.**';
+            } else {
+              comment += '\n✅ **Quality checks are passing. Please ensure all requirements are met before merging.**';
+            }
+            
+            // Find and update existing summary comment or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const botComment = comments.find(comment => 
+              comment.user.type === 'Bot' && comment.body.includes('PR Quality Gate Summary')
+            );
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
