@@ -17,6 +17,8 @@ describe('App Component', () => {
           return Promise.resolve([]) // Empty podcasts by default  
         case 'get_episodes':
           return Promise.resolve([]) // Empty episodes by default
+        case 'search_episodes':
+          return Promise.resolve([]) // Empty search results by default
         default:
           return Promise.reject(new Error(`Unhandled command: ${command}`))
       }
@@ -178,6 +180,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
         .mockResolvedValueOnce(undefined) // update_episode_status
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts refresh
@@ -220,6 +223,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST])
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes)
 
       render(<App />)
@@ -239,6 +243,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes for combined inbox
 
       render(<App />)
@@ -259,6 +264,7 @@ describe('App Component', () => {
     it('shows search input when podcast is selected but not in combined inbox', async () => {
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce([]) // initial get_episodes (combined inbox)
         .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
 
@@ -288,6 +294,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce([]) // initial get_episodes
         .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
         .mockResolvedValueOnce(mockSearchResults) // search_episodes
@@ -334,6 +341,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce([]) // initial get_episodes
         .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
         .mockResolvedValueOnce(mockSearchResults) // search_episodes
@@ -370,6 +378,7 @@ describe('App Component', () => {
     it('clears search when query is empty', async () => {
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce([]) // initial get_episodes
         .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
         .mockResolvedValueOnce([MOCK_EPISODE]) // search_episodes (empty query returns to normal)
@@ -401,6 +410,7 @@ describe('App Component', () => {
     it('shows no results message when search returns empty', async () => {
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce([]) // initial get_episodes
         .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
         .mockResolvedValueOnce([]) // search_episodes with no results
@@ -439,6 +449,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce([]) // initial get_episodes
         .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes for selected podcast
         .mockResolvedValueOnce(mockSearchResults) // search_episodes
@@ -544,26 +555,56 @@ describe('App Component', () => {
 
   describe('User Story #3: Download Episodes', () => {
     it('formats file sizes correctly', async () => {
-      mockInvoke.mockReset() // Clear default mocks
+      const mockEpisodes = [{ ...MOCK_EPISODE, downloaded: false }]
+      const mockProgress = {
+        episode_id: 1,
+        downloaded_bytes: 1024 * 1024 * 5.5, // 5.5 MB
+        total_bytes: 1024 * 1024 * 50, // 50 MB
+        percentage: 11.0,
+        speed_bps: 1024 * 500, // 500 KB/s
+        eta_seconds: 90 // 1m 30s
+      }
+
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
-        .mockResolvedValueOnce([MOCK_EPISODE]) // get_episodes
         .mockResolvedValueOnce([]) // get_usb_devices
+        .mockResolvedValueOnce([]) // get_episodes (Combined Inbox)
+        .mockResolvedValueOnce(mockEpisodes) // get_episodes (for selected podcast)
+        .mockResolvedValueOnce(undefined) // download_episode
+        .mockResolvedValue(mockProgress) // get_download_progress (repeated calls)
 
       render(<App />)
-
-      // Select the podcast to show its episodes
-      await waitFor(() => {
-        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
-      })
-
-      // Click on the podcast to select it
-      fireEvent.click(screen.getByText('Test Podcast'))
 
       // Wait for episodes to load and select one
       await waitFor(() => {
         expect(screen.getByText('Test Episode')).toBeInTheDocument()
       })
+
+      fireEvent.click(screen.getByText('Test Episode'))
+
+      // Click download button
+      await waitFor(() => {
+        const downloadButton = screen.getByText('📥 Download Episode')
+        fireEvent.click(downloadButton)
+      })
+
+      // Wait for downloading state to appear first
+      await waitFor(() => {
+        expect(screen.getByText('📥 Downloading...')).toBeInTheDocument()
+      })
+
+      // Then wait for progress display with formatted values (longer timeout for async operations)
+      await waitFor(() => {
+        expect(screen.getByText('11.0%')).toBeInTheDocument()
+      }, { timeout: 3000 })
+
+      // Check that the formatted values are present (they may be in separate elements)
+      await waitFor(() => {
+        expect(screen.getByText(/5.5 MB/)).toBeInTheDocument()
+        expect(screen.getByText(/50 MB/)).toBeInTheDocument()
+        expect(screen.getByText(/500 KB\/s/)).toBeInTheDocument()
+        expect(screen.getByText(/1m 30s/)).toBeInTheDocument()
+      }, { timeout: 3000 })
     })
 
     it('shows download button for undownloaded episodes', async () => {
@@ -571,6 +612,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
 
       render(<App />)
@@ -597,6 +639,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
 
       render(<App />)
@@ -620,6 +663,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
         .mockResolvedValueOnce(undefined) // download_episode
 
@@ -660,6 +704,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
         .mockResolvedValueOnce(undefined) // download_episode
         .mockResolvedValue(mockProgress) // get_download_progress (repeated calls)
@@ -699,6 +744,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
 
       render(<App />)
@@ -724,6 +770,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
         .mockRejectedValueOnce(new Error('Network error')) // download_episode fails
 
@@ -754,6 +801,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
         .mockResolvedValueOnce(undefined) // first download_episode
         .mockResolvedValueOnce({
@@ -790,7 +838,7 @@ describe('App Component', () => {
         episodeId: 1,
       })
       // Note: Progress tracking happens asynchronously, so we can't guarantee exact call count
-      expect(mockInvoke).toHaveBeenCalledTimes(3) // get_podcasts, get_episodes, download_episode
+      expect(mockInvoke).toHaveBeenCalledTimes(4) // get_podcasts, get_usb_devices, get_episodes, download_episode
     })
 
     it('formats file sizes correctly', async () => {
@@ -806,6 +854,7 @@ describe('App Component', () => {
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
         .mockResolvedValueOnce(mockEpisodes) // get_episodes
         .mockResolvedValueOnce(undefined) // download_episode
         .mockResolvedValue(mockProgress) // get_download_progress (repeated calls)

@@ -175,27 +175,38 @@ function App() {
   }
 
   async function addPodcast() {
+    console.log('DEBUG: Starting addPodcast function')
+    
     if (!rssUrl.trim()) {
+      console.log('DEBUG: RSS URL is empty')
       setError('Please enter an RSS URL')
       return
     }
 
+    console.log('DEBUG: Adding podcast with URL:', rssUrl)
     setAddingPodcast(true)
     setError('')
 
     try {
       // User Story #1: Add new podcast subscription via RSS URL
+      console.log('DEBUG: Calling invoke add_podcast')
       await invoke('add_podcast', { rssUrl })
+      console.log('DEBUG: Successfully added podcast')
 
+      console.log('DEBUG: Reloading podcasts')
       await loadPodcasts()
+      console.log('DEBUG: Podcasts reloaded')
+      
       setRssUrl('')
       setError('')
+      console.log('DEBUG: addPodcast completed successfully')
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('Failed to add podcast:', err)
+      console.error('DEBUG: Error in addPodcast:', err)
       setError(`Failed to add podcast: ${err}`)
     } finally {
       setAddingPodcast(false)
+      console.log('DEBUG: addPodcast function ended')
     }
   }
 
@@ -367,10 +378,14 @@ function App() {
   // User Story #3: Download Episodes - Core functionality
   // Acceptance Criteria: Progress tracking, file existence validation, error messages
   async function downloadEpisode(episode: Episode) {
+    console.log('DEBUG: Starting downloadEpisode for episode:', episode.id, episode.title)
+    
     if (downloadingEpisodes.has(episode.id)) {
+      console.log('DEBUG: Episode already downloading, returning')
       return // Already downloading
     }
 
+    console.log('DEBUG: Clearing previous errors for episode:', episode.id)
     // Clear any previous error for this episode
     setDownloadErrors(prev => {
       const newErrors = new Map(prev)
@@ -378,21 +393,25 @@ function App() {
       return newErrors
     })
 
+    console.log('DEBUG: Marking episode as downloading')
     // Mark episode as downloading
     setDownloadingEpisodes(prev => new Set(prev).add(episode.id))
 
     try {
+      console.log('DEBUG: About to call invoke download_episode with episodeId:', episode.id)
       // Start download
       await invoke('download_episode', {
         episodeId: episode.id,
       })
+      console.log('DEBUG: invoke download_episode completed successfully')
 
+      console.log('DEBUG: Starting progress tracking')
       // Start progress tracking
       startProgressTracking(episode.id)
 
     } catch (err) {
       // eslint-disable-next-line no-console
-      console.error('Failed to start download:', err)
+      console.error('DEBUG: Failed to start download:', err)
       setDownloadErrors(prev => new Map(prev).set(episode.id, `Download failed: ${err}`))
       setDownloadingEpisodes(prev => {
         const newSet = new Set(prev)
@@ -490,16 +509,31 @@ function App() {
     if (seconds < 60) {
       return `${Math.round(seconds)}s`
     } else if (seconds < 3600) {
-      const minutes = Math.round(seconds / 60)
-      return `${minutes}m`
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = seconds % 60
+      if (remainingSeconds > 0) {
+        return `${minutes}m ${remainingSeconds}s`
+      } else {
+        return `${minutes}m`
+      }
     } else {
-      const hours = Math.round(seconds / 3600)
-      return `${hours}h`
+      const hours = Math.floor(seconds / 3600)
+      const remainingMinutes = Math.floor((seconds % 3600) / 60)
+      if (remainingMinutes > 0) {
+        return `${hours}h ${remainingMinutes}m`
+      } else {
+        return `${hours}h`
+      }
     }
   }
 
   // User Story #8: USB Device Storage Formatting Functions
-  function formatStorageSize(bytes: number): string {
+  function formatStorageSize(bytes: number | undefined | null): string {
+    // Handle undefined, null, or non-finite values
+    if (bytes == null || !isFinite(bytes) || bytes < 0) {
+      return '0 B'
+    }
+    
     if (bytes === 0) return '0 B'
     
     const units = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -511,10 +545,22 @@ function App() {
     return `${size.toFixed(1)} ${units[i]}`
   }
 
-  function calculateStorageUsagePercentage(device: UsbDevice): number {
-    if (device.total_space === 0) return 0
+  function calculateStorageUsagePercentage(device: UsbDevice | undefined | null): number {
+    // Handle undefined/null device or invalid properties
+    if (!device || 
+        device.total_space == null || 
+        device.available_space == null ||
+        !isFinite(device.total_space) || 
+        !isFinite(device.available_space) ||
+        device.total_space <= 0) {
+      return 0
+    }
+    
     const usedSpace = device.total_space - device.available_space
-    return Math.round((usedSpace / device.total_space) * 100)
+    const percentage = (usedSpace / device.total_space) * 100
+    
+    // Ensure we return a valid, finite number
+    return isFinite(percentage) ? Math.round(percentage) : 0
   }
 
   // User Story #4: Remove Podcasts - Core functionality
@@ -719,12 +765,14 @@ function App() {
               </div>
             ) : (
               <div className="usb-device-list">
-                {usbDevices.map(device => (
+                {usbDevices
+                  .filter(device => device && device.id) // Filter out invalid devices
+                  .map(device => (
                   <div key={device.id} className="usb-device-item">
                     <div className="device-info">
                       <div className="device-header">
                         <span className="device-icon">📱</span>
-                        <span className="device-name">{device.name}</span>
+                        <span className="device-name">{device.name || 'USB Device'}</span>
                       </div>
                       <div className="storage-info">
                         <div className="storage-text">

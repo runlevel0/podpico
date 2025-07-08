@@ -1436,3 +1436,434 @@ select:focus {
     transition: none;
   }
 }
+
+/* User Story #9: Transfer Episodes to USB Device - CSS Styles */
+.transfer-indicator {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.transfer-indicator.on-device {
+  color: #22c55e; /* Green for on device */
+}
+
+.transfer-indicator.transferring {
+  color: #eab308; /* Yellow for transferring */
+}
+
+.transfer-indicator.error {
+  color: #ef4444; /* Red for errors */
+}
+
+.transfer-button {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  border: none;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+}
+
+.transfer-button:hover {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  box-shadow: 0 4px 8px rgba(34, 197, 94, 0.3);
+  transform: translateY(-1px);
+}
+
+.transfer-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+}
+
+.transfer-button-disabled {
+  background: var(--surface-color);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  cursor: not-allowed;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.9rem;
+}
+
+.transfer-progress-container {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+}
+
+.transfer-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.transfer-status {
+  background: var(--surface-color);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+}
+
+.transfer-complete {
+  color: #22c55e;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.transfer-device-selection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
+}
+
+.transfer-device-selection label {
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.transfer-device-selection select {
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.transfer-device-selection select:hover {
+  border-color: var(--primary-color);
+}
+
+.transfer-device-selection select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(100, 108, 255, 0.1);
+}
+
+.transfer-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.transfer-error .error-icon {
+  color: #ef4444;
+  font-size: 1.1rem;
+}
+
+.transfer-error .error-message {
+  color: #ef4444;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.transfer-error .retry-button {
+  background: none;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.transfer-error .retry-button:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Responsive adjustments for transfer functionality */
+@media (max-width: 768px) {
+  .transfer-button,
+  .transfer-button-disabled {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.8rem;
+  }
+  
+  .transfer-device-selection {
+    margin: var(--spacing-xs) 0;
+  }
+  
+  .transfer-error {
+    padding: var(--spacing-sm);
+  }
+  
+  .transfer-error .error-message {
+    min-width: 150px;
+    font-size: 0.8rem;
+  }
+  
+  .transfer-error .retry-button {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+}
+
+/* High contrast mode support for transfer elements */
+@media (prefers-contrast: high) {
+  .transfer-button {
+    border: 2px solid #22c55e;
+  }
+  
+  .transfer-progress-container,
+  .transfer-status,
+  .transfer-error {
+    border: 2px solid var(--border-color);
+  }
+  
+  .transfer-device-selection select {
+    border: 2px solid var(--border-color);
+  }
+}
+
+/* Reduced motion support for transfer animations */
+@media (prefers-reduced-motion: reduce) {
+  .transfer-button {
+    transition: none;
+  }
+  
+  .transfer-button:hover {
+    transform: none;
+  }
+  
+  .transfer-device-selection select {
+    transition: none;
+  }
+}
+
+/* User Story #10: Remove Episodes from USB Device - CSS Styles */
+.remove-from-device-section {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.remove-from-device-button {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border: none;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.remove-from-device-button:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+
+.remove-from-device-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+}
+
+.remove-progress-container {
+  background: var(--surface-color);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  color: #ef4444;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.remove-status {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.remove-device-selection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin: var(--spacing-sm) 0;
+}
+
+.remove-device-selection label {
+  font-weight: 500;
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+.remove-device-selection select {
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.remove-device-selection select:hover {
+  border-color: #ef4444;
+}
+
+.remove-device-selection select:focus {
+  outline: none;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+}
+
+.remove-from-device-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.remove-from-device-error .error-icon {
+  color: #ef4444;
+  font-size: 1.1rem;
+}
+
+.remove-from-device-error .error-message {
+  color: #ef4444;
+  font-size: 0.9rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.remove-from-device-error .retry-button {
+  background: none;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.remove-from-device-error .retry-button:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* Episode list indicators for removed episodes */
+.transfer-indicator.removing {
+  color: #ef4444; /* Red for removing */
+}
+
+/* Storage info styling for confirmation dialog */
+.storage-info {
+  color: #22c55e;
+  font-size: 0.9rem;
+  margin: var(--spacing-sm) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Responsive adjustments for remove from device functionality */
+@media (max-width: 768px) {
+  .remove-from-device-button {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.8rem;
+  }
+  
+  .remove-device-selection {
+    margin: var(--spacing-xs) 0;
+  }
+  
+  .remove-from-device-error {
+    padding: var(--spacing-sm);
+  }
+  
+  .remove-from-device-error .error-message {
+    min-width: 150px;
+    font-size: 0.8rem;
+  }
+  
+  .remove-from-device-error .retry-button {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+  }
+}
+
+/* High contrast mode support for remove functionality */
+@media (prefers-contrast: high) {
+  .remove-from-device-button {
+    border: 2px solid #ef4444;
+  }
+  
+  .remove-progress-container,
+  .remove-status,
+  .remove-from-device-error {
+    border: 2px solid var(--border-color);
+  }
+  
+  .remove-device-selection select {
+    border: 2px solid var(--border-color);
+  }
+}
+
+/* Reduced motion support for remove animations */
+@media (prefers-reduced-motion: reduce) {
+  .remove-from-device-button {
+    transition: none;
+  }
+  
+  .remove-from-device-button:hover {
+    transform: none;
+  }
+  
+  .remove-device-selection select {
+    transition: none;
+  }
+}

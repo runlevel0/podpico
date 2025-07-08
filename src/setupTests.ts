@@ -40,6 +40,16 @@ export const MOCK_EPISODE = {
   on_device: false,
 }
 
+// User Story #8: USB Device Management - Mock USB device data
+export const MOCK_USB_DEVICE = {
+  id: 'usb_device_1',
+  name: 'Test USB Device',
+  path: '/media/test-usb',
+  total_space: 16000000000, // 16GB
+  available_space: 8000000000, // 8GB available
+  is_connected: true,
+}
+
 // Reset mocks before each test
 beforeEach(() => {
   mockInvoke.mockReset()
