@@ -357,12 +357,15 @@ impl FileManager {
         if let Some(filename) = url.split('/').next_back() {
             // Remove query parameters (everything after ?)
             let filename_clean = filename.split('?').next().unwrap_or(filename);
-            
+
             // Remove URL fragments (everything after #)
             let filename_clean = filename_clean.split('#').next().unwrap_or(filename_clean);
-            
+
             // Check if it's a valid filename
-            if filename_clean.contains('.') && filename_clean.len() < 255 && !filename_clean.is_empty() {
+            if filename_clean.contains('.')
+                && filename_clean.len() < 255
+                && !filename_clean.is_empty()
+            {
                 // Sanitize filename - remove/replace invalid characters
                 let sanitized = filename_clean
                     .chars()
@@ -375,9 +378,12 @@ impl FileManager {
                         _ => '_',
                     })
                     .collect::<String>();
-                
+
                 // Ensure we have a valid extension
-                if sanitized.ends_with(".mp3") || sanitized.ends_with(".m4a") || sanitized.ends_with(".wav") {
+                if sanitized.ends_with(".mp3")
+                    || sanitized.ends_with(".m4a")
+                    || sanitized.ends_with(".wav")
+                {
                     return sanitized;
                 }
             }
@@ -403,6 +409,26 @@ impl FileManager {
 
         if file_path.exists() {
             fs::remove_file(file_path).await?;
+        }
+
+        // Remove from downloads tracking
+        let mut downloads = self.downloads.lock().await;
+        downloads.remove(&episode_id);
+
+        Ok(())
+    }
+
+    // New method that uses the actual file path
+    pub async fn delete_episode_by_path(
+        &self,
+        episode_id: i64,
+        file_path: &str,
+    ) -> Result<(), PodPicoError> {
+        let path = std::path::Path::new(file_path);
+        log::info!("Deleting episode file by path: {:?}", path);
+
+        if path.exists() {
+            fs::remove_file(path).await?;
         }
 
         // Remove from downloads tracking
@@ -684,6 +710,31 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_delete_episode_by_path() {
+        let file_manager = create_test_file_manager().await;
+        let episode_id = 7;
+        let file_path_str = file_manager
+            .get_episode_path(1, episode_id)
+            .to_string_lossy()
+            .to_string();
+        let file_path = std::path::Path::new(&file_path_str);
+
+        // Create a test file
+        tokio::fs::create_dir_all(file_manager.download_directory.join("1"))
+            .await
+            .unwrap();
+        tokio::fs::write(file_path, b"test content").await.unwrap();
+        assert!(file_path.exists(), "Test file should exist");
+
+        // Delete the episode by path
+        let result = file_manager
+            .delete_episode_by_path(episode_id, &file_path_str)
+            .await;
+        assert!(result.is_ok(), "Delete should succeed");
+        assert!(!file_path.exists(), "Test file should be deleted");
+    }
+
+    #[tokio::test]
     async fn test_extract_filename_from_url() {
         let file_manager = create_test_file_manager().await;
 
@@ -696,12 +747,12 @@ mod tests {
         let filename = file_manager.extract_filename_from_url("https://example.com/feed", 789);
         assert_eq!(filename, "789.mp3");
 
-        // Test with complex URL
+        // Test with complex URL - query parameters should be removed
         let filename = file_manager.extract_filename_from_url(
             "https://cdn.example.com/episodes/show_name_ep_042.mp3?token=abc",
             42,
         );
-        assert_eq!(filename, "show_name_ep_042.mp3?token=abc");
+        assert_eq!(filename, "show_name_ep_042.mp3");
     }
 
     #[tokio::test]

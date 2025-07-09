@@ -7,14 +7,14 @@ describe('App Component', () => {
   beforeEach(() => {
     // Reset all mocks
     mockInvoke.mockReset()
-    
+
     // Set up comprehensive default mocking to prevent unhandled command errors
-    mockInvoke.mockImplementation((command: string, args?: any) => {
+    mockInvoke.mockImplementation((command: string) => {
       switch (command) {
         case 'get_usb_devices':
           return Promise.resolve([]) // Empty USB devices array by default
         case 'get_podcasts':
-          return Promise.resolve([]) // Empty podcasts by default  
+          return Promise.resolve([]) // Empty podcasts by default
         case 'get_episodes':
           return Promise.resolve([]) // Empty episodes by default
         case 'search_episodes':
@@ -107,10 +107,10 @@ describe('App Component', () => {
       render(<App />)
 
       const addButton = screen.getByText('Add Podcast')
-      
+
       // Button should be disabled when URL is empty
       expect(addButton).toBeDisabled()
-      
+
       expect(mockInvoke).not.toHaveBeenCalledWith(
         'add_podcast',
         expect.anything()
@@ -272,7 +272,9 @@ describe('App Component', () => {
 
       // Initially in combined inbox - search should not be visible
       await waitFor(() => {
-        expect(screen.queryByPlaceholderText('Search episodes...')).not.toBeInTheDocument()
+        expect(
+          screen.queryByPlaceholderText('Search episodes...')
+        ).not.toBeInTheDocument()
       })
 
       // Select a podcast
@@ -283,13 +285,15 @@ describe('App Component', () => {
 
       // Search input should now be visible
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('Search episodes...')
+        ).toBeInTheDocument()
       })
     })
 
     it('performs search and displays results with highlighting', async () => {
       const mockSearchResults = [
-        { ...MOCK_EPISODE, title: 'Introduction to React Testing' }
+        { ...MOCK_EPISODE, title: 'Introduction to React Testing' },
       ]
 
       mockInvoke
@@ -309,7 +313,9 @@ describe('App Component', () => {
 
       // Wait for search input to appear
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('Search episodes...')
+        ).toBeInTheDocument()
       })
 
       // Perform search
@@ -317,12 +323,15 @@ describe('App Component', () => {
       fireEvent.change(searchInput, { target: { value: 'React' } })
 
       // Wait for search to be called (with debouncing)
-      await waitFor(() => {
-        expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
-          podcastId: 1,
-          searchQuery: 'React',
-        })
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
+            podcastId: 1,
+            searchQuery: 'React',
+          })
+        },
+        { timeout: 1000 }
+      )
 
       // Check search results are displayed
       await waitFor(() => {
@@ -330,9 +339,13 @@ describe('App Component', () => {
         const highlightedElement = screen.getByText('React')
         expect(highlightedElement).toBeInTheDocument()
         // Verify the highlight CSS class is applied
-        expect(highlightedElement.closest('mark')).toHaveClass('search-highlight')
+        expect(highlightedElement.closest('mark')).toHaveClass(
+          'search-highlight'
+        )
         // Verify the search input has the correct value
-        expect(screen.getByPlaceholderText('Search episodes...')).toHaveValue('React')
+        expect(screen.getByPlaceholderText('Search episodes...')).toHaveValue(
+          'React'
+        )
       })
     })
 
@@ -356,7 +369,9 @@ describe('App Component', () => {
 
       // Wait for search input
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('Search episodes...')
+        ).toBeInTheDocument()
       })
 
       // Measure search performance
@@ -364,12 +379,15 @@ describe('App Component', () => {
       const searchInput = screen.getByPlaceholderText('Search episodes...')
       fireEvent.change(searchInput, { target: { value: 'test' } })
 
-      await waitFor(() => {
-        expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
-          podcastId: 1,
-          searchQuery: 'test',
-        })
-      }, { timeout: 2500 })
+      await waitFor(
+        () => {
+          expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
+            podcastId: 1,
+            searchQuery: 'test',
+          })
+        },
+        { timeout: 2500 }
+      )
 
       const searchTime = Date.now() - startTime
       expect(searchTime).toBeLessThan(2000) // 2 second requirement
@@ -393,7 +411,9 @@ describe('App Component', () => {
 
       // Wait for search input
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('Search episodes...')
+        ).toBeInTheDocument()
       })
 
       // Enter and then clear search
@@ -425,7 +445,9 @@ describe('App Component', () => {
 
       // Wait for search input
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('Search episodes...')
+        ).toBeInTheDocument()
       })
 
       // Perform search that returns no results
@@ -434,17 +456,20 @@ describe('App Component', () => {
 
       // Check for no results message
       await waitFor(() => {
-        expect(screen.getByText('No episodes found matching "nonexistent"')).toBeInTheDocument()
+        expect(
+          screen.getByText('No episodes found matching "nonexistent"')
+        ).toBeInTheDocument()
       })
     })
 
     it('highlights search terms in episode details when episode is selected from search results', async () => {
       const mockSearchResults = [
-        { 
-          ...MOCK_EPISODE, 
+        {
+          ...MOCK_EPISODE,
           title: 'Introduction to React Testing',
-          description: 'This episode covers React testing fundamentals and best practices for testing React components.'
-        }
+          description:
+            'This episode covers React testing fundamentals and best practices for testing React components.',
+        },
       ]
 
       mockInvoke
@@ -464,7 +489,9 @@ describe('App Component', () => {
 
       // Wait for search input to appear
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('Search episodes...')
+        ).toBeInTheDocument()
       })
 
       // Perform search
@@ -472,12 +499,15 @@ describe('App Component', () => {
       fireEvent.change(searchInput, { target: { value: 'React' } })
 
       // Wait for search results to appear
-      await waitFor(() => {
-        expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
-          podcastId: 1,
-          searchQuery: 'React',
-        })
-      }, { timeout: 1000 })
+      await waitFor(
+        () => {
+          expect(mockInvoke).toHaveBeenCalledWith('search_episodes', {
+            podcastId: 1,
+            searchQuery: 'React',
+          })
+        },
+        { timeout: 1000 }
+      )
 
       // Wait for search results to appear and click on the episode item to select it
       await waitFor(() => {
@@ -492,18 +522,20 @@ describe('App Component', () => {
       // Wait for episode details to appear and verify search term highlighting
       await waitFor(() => {
         // Check that search term is highlighted in the episode details title
-        const detailsTitle = screen.getAllByText('React').find(el => 
-          el.closest('.episode-header') !== null
-        )
+        const detailsTitle = screen
+          .getAllByText('React')
+          .find(el => el.closest('.episode-header') !== null)
         expect(detailsTitle).toBeInTheDocument()
         expect(detailsTitle!.closest('mark')).toHaveClass('search-highlight')
 
         // Check that search term is highlighted in the episode description
-        const descriptionReact = screen.getAllByText('React').find(el => 
-          el.closest('.episode-description') !== null
-        )
+        const descriptionReact = screen
+          .getAllByText('React')
+          .find(el => el.closest('.episode-description') !== null)
         expect(descriptionReact).toBeInTheDocument()
-        expect(descriptionReact!.closest('mark')).toHaveClass('search-highlight')
+        expect(descriptionReact!.closest('mark')).toHaveClass(
+          'search-highlight'
+        )
       })
     })
 
@@ -523,7 +555,9 @@ describe('App Component', () => {
 
       // Wait for search input to appear
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Search episodes...')).toBeInTheDocument()
+        expect(
+          screen.getByPlaceholderText('Search episodes...')
+        ).toBeInTheDocument()
       })
 
       const searchInput = screen.getByPlaceholderText('Search episodes...')
@@ -562,7 +596,7 @@ describe('App Component', () => {
         total_bytes: 1024 * 1024 * 50, // 50 MB
         percentage: 11.0,
         speed_bps: 1024 * 500, // 500 KB/s
-        eta_seconds: 90 // 1m 30s
+        eta_seconds: 90, // 1m 30s
       }
 
       mockInvoke
@@ -594,17 +628,23 @@ describe('App Component', () => {
       })
 
       // Then wait for progress display with formatted values (longer timeout for async operations)
-      await waitFor(() => {
-        expect(screen.getByText('11.0%')).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('11.0%')).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
 
       // Check that the formatted values are present (they may be in separate elements)
-      await waitFor(() => {
-        expect(screen.getByText(/5.5 MB/)).toBeInTheDocument()
-        expect(screen.getByText(/50 MB/)).toBeInTheDocument()
-        expect(screen.getByText(/500 KB\/s/)).toBeInTheDocument()
-        expect(screen.getByText(/1m 30s/)).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText(/5.5 MB/)).toBeInTheDocument()
+          expect(screen.getByText(/50 MB/)).toBeInTheDocument()
+          expect(screen.getByText(/500 KB\/s/)).toBeInTheDocument()
+          expect(screen.getByText(/1m 30s/)).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it('shows download button for undownloaded episodes', async () => {
@@ -631,11 +671,13 @@ describe('App Component', () => {
     })
 
     it('shows downloaded status for downloaded episodes', async () => {
-      const mockEpisodes = [{
-        ...MOCK_EPISODE,
-        downloaded: true,
-        local_file_path: '/path/to/episode.mp3'
-      }]
+      const mockEpisodes = [
+        {
+          ...MOCK_EPISODE,
+          downloaded: true,
+          local_file_path: '/path/to/episode.mp3',
+        },
+      ]
 
       mockInvoke
         .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
@@ -699,7 +741,7 @@ describe('App Component', () => {
         total_bytes: 1000000,
         percentage: 50.0,
         speed_bps: 125000,
-        eta_seconds: 4
+        eta_seconds: 4,
       }
 
       mockInvoke
@@ -726,20 +768,35 @@ describe('App Component', () => {
 
       // Wait for downloading state to be set immediately (the download button should be replaced)
       await waitFor(() => {
-        expect(screen.queryByText('📥 Download Episode')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('📥 Download Episode')
+        ).not.toBeInTheDocument()
         expect(screen.getByText('📥 Downloading...')).toBeInTheDocument()
       })
 
       // Wait for progress percentage to appear (after progress interval runs)
-      await waitFor(() => {
-        expect(screen.getByText('50.0%')).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('50.0%')).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
 
     it('shows download indicators in episode list', async () => {
       const mockEpisodes = [
-        { ...MOCK_EPISODE, id: 1, title: 'Downloaded Episode', downloaded: true },
-        { ...MOCK_EPISODE, id: 2, title: 'Not Downloaded Episode', downloaded: false }
+        {
+          ...MOCK_EPISODE,
+          id: 1,
+          title: 'Downloaded Episode',
+          downloaded: true,
+        },
+        {
+          ...MOCK_EPISODE,
+          id: 2,
+          title: 'Not Downloaded Episode',
+          downloaded: false,
+        },
       ]
 
       mockInvoke
@@ -758,7 +815,7 @@ describe('App Component', () => {
       // Check for download indicator with bullet point prefix
       await waitFor(() => {
         // Look for the text more flexibly since it might be broken across elements
-        const downloadedIndicator = screen.getByText((content, element) => {
+        const downloadedIndicator = screen.getByText(content => {
           return content.includes('📥 Downloaded')
         })
         expect(downloadedIndicator).toBeInTheDocument()
@@ -810,7 +867,7 @@ describe('App Component', () => {
           total_bytes: 1000000,
           percentage: 0,
           speed_bps: 0,
-          eta_seconds: 100
+          eta_seconds: 100,
         }) // get_download_progress
 
       render(<App />)
@@ -849,7 +906,7 @@ describe('App Component', () => {
         total_bytes: 1024 * 1024 * 50, // 50 MB
         percentage: 11.0,
         speed_bps: 1024 * 500, // 500 KB/s
-        eta_seconds: 90 // 1m 30s
+        eta_seconds: 90, // 1m 30s
       }
 
       mockInvoke
@@ -880,17 +937,23 @@ describe('App Component', () => {
       })
 
       // Then wait for progress display with formatted values (longer timeout for async operations)
-      await waitFor(() => {
-        expect(screen.getByText('11.0%')).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('11.0%')).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
 
       // Check that the formatted values are present (they may be in separate elements)
-      await waitFor(() => {
-        expect(screen.getByText(/5.5 MB/)).toBeInTheDocument()
-        expect(screen.getByText(/50 MB/)).toBeInTheDocument()
-        expect(screen.getByText(/500 KB\/s/)).toBeInTheDocument()
-        expect(screen.getByText(/1m 30s/)).toBeInTheDocument()
-      }, { timeout: 3000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText(/5.5 MB/)).toBeInTheDocument()
+          expect(screen.getByText(/50 MB/)).toBeInTheDocument()
+          expect(screen.getByText(/500 KB\/s/)).toBeInTheDocument()
+          expect(screen.getByText(/1m 30s/)).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
     })
   })
 
@@ -931,7 +994,9 @@ describe('App Component', () => {
       })
 
       // Hover over podcast to show remove button
-      const podcastItem = screen.getByText('Test Podcast').closest('.podcast-item')
+      const podcastItem = screen
+        .getByText('Test Podcast')
+        .closest('.podcast-item')
       fireEvent.mouseEnter(podcastItem!)
 
       await waitFor(() => {
@@ -957,7 +1022,9 @@ describe('App Component', () => {
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument()
         expect(screen.getByText('Remove Podcast')).toBeInTheDocument()
-        expect(screen.getByText(/Are you sure you want to remove/)).toBeInTheDocument()
+        expect(
+          screen.getByText(/Are you sure you want to remove/)
+        ).toBeInTheDocument()
         expect(screen.getByRole('dialog')).toHaveTextContent('Test Podcast')
         expect(screen.getByText('Cancel')).toBeInTheDocument()
         expect(screen.getByText('🗑️ Remove Podcast')).toBeInTheDocument()
@@ -1103,7 +1170,9 @@ describe('App Component', () => {
 
       // Check error message appears in the podcast item
       await waitFor(() => {
-        expect(screen.getByText(/Remove failed: Error: Failed to remove podcast/)).toBeInTheDocument()
+        expect(
+          screen.getByText(/Remove failed: Error: Failed to remove podcast/)
+        ).toBeInTheDocument()
       })
     })
 
@@ -1181,7 +1250,9 @@ describe('App Component', () => {
       // Should fall back to combined inbox
       await waitFor(() => {
         expect(screen.getByText('All New Episodes')).toBeInTheDocument()
-        expect(screen.queryByText('Test Podcast Episodes')).not.toBeInTheDocument()
+        expect(
+          screen.queryByText('Test Podcast Episodes')
+        ).not.toBeInTheDocument()
       })
     })
 
@@ -1211,9 +1282,13 @@ describe('App Component', () => {
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument()
         expect(screen.getByText('Remove Podcast')).toBeInTheDocument()
-        expect(screen.getByText(/Are you sure you want to remove/)).toBeInTheDocument()
+        expect(
+          screen.getByText(/Are you sure you want to remove/)
+        ).toBeInTheDocument()
         expect(screen.getByRole('dialog')).toHaveTextContent('Test Podcast')
-        expect(screen.getByText(/This will permanently remove the podcast/)).toBeInTheDocument()
+        expect(
+          screen.getByText(/This will permanently remove the podcast/)
+        ).toBeInTheDocument()
       })
     })
 
@@ -1300,13 +1375,291 @@ describe('App Component', () => {
       expect(mockInvoke).toHaveBeenCalledWith('remove_podcast', {
         podcastId: 1,
       })
-      
+
       // Check that remove_podcast was called exactly once
-      const removeCalls = mockInvoke.mock.calls.filter(call => call[0] === 'remove_podcast')
+      const removeCalls = mockInvoke.mock.calls.filter(
+        call => call[0] === 'remove_podcast'
+      )
       expect(removeCalls).toHaveLength(1)
 
       // Clean up
       resolveRemoval!(undefined)
+    })
+  })
+
+  describe('Remove Downloaded Episode', () => {
+    it('shows remove button for downloaded episodes', async () => {
+      const mockEpisodes = [
+        {
+          ...MOCK_EPISODE,
+          downloaded: true,
+          local_file_path: '/path/to/episode.mp3',
+        },
+      ]
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
+        .mockResolvedValueOnce(mockEpisodes) // get_episodes
+
+      render(<App />)
+
+      // Wait for episodes to load and select one
+      await waitFor(() => {
+        expect(screen.getByText('Test Episode')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('Test Episode'))
+
+      // Check for remove button
+      await waitFor(() => {
+        expect(screen.getByText('✅ Downloaded')).toBeInTheDocument()
+        expect(screen.getByText('🗑️ Remove Download')).toBeInTheDocument()
+      })
+    })
+
+    it('does not show remove button for non-downloaded episodes', async () => {
+      const mockEpisodes = [{ ...MOCK_EPISODE, downloaded: false }]
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
+        .mockResolvedValueOnce(mockEpisodes) // get_episodes
+
+      render(<App />)
+
+      // Wait for episodes to load and select one
+      await waitFor(() => {
+        expect(screen.getByText('Test Episode')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('Test Episode'))
+
+      // Check for download button, not remove button
+      await waitFor(() => {
+        expect(screen.getByText('📥 Download Episode')).toBeInTheDocument()
+        expect(screen.queryByText('🗑️ Remove Download')).not.toBeInTheDocument()
+      })
+    })
+
+    it('calls delete_downloaded_episode backend command when remove button is clicked', async () => {
+      const mockEpisodes = [
+        {
+          ...MOCK_EPISODE,
+          downloaded: true,
+          local_file_path: '/path/to/episode.mp3',
+        },
+      ]
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
+        .mockResolvedValueOnce(mockEpisodes) // get_episodes
+        .mockResolvedValueOnce(undefined) // delete_downloaded_episode
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts (refresh)
+        .mockResolvedValueOnce([{ ...MOCK_EPISODE, downloaded: false }]) // get_episodes (refresh)
+
+      render(<App />)
+
+      // Wait for episodes to load and select one
+      await waitFor(() => {
+        expect(screen.getByText('Test Episode')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('Test Episode'))
+
+      // Click remove button
+      await waitFor(() => {
+        const removeButton = screen.getByText('🗑️ Remove Download')
+        fireEvent.click(removeButton)
+      })
+
+      // Verify backend call was made
+      await waitFor(() => {
+        expect(mockInvoke).toHaveBeenCalledWith('delete_downloaded_episode', {
+          episodeId: 1,
+        })
+      })
+    })
+
+    it('shows loading state during removal', async () => {
+      const mockEpisodes = [
+        {
+          ...MOCK_EPISODE,
+          downloaded: true,
+          local_file_path: '/path/to/episode.mp3',
+        },
+      ]
+
+      let resolveRemoval: (value: any) => void
+      const removalPromise = new Promise(resolve => {
+        resolveRemoval = resolve
+      })
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
+        .mockResolvedValueOnce(mockEpisodes) // get_episodes
+        .mockReturnValueOnce(removalPromise) // delete_downloaded_episode (slow)
+
+      render(<App />)
+
+      // Wait for episodes to load and select one
+      await waitFor(() => {
+        expect(screen.getByText('Test Episode')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('Test Episode'))
+
+      // Click remove button
+      await waitFor(() => {
+        const removeButton = screen.getByText('🗑️ Remove Download')
+        fireEvent.click(removeButton)
+      })
+
+      // Check loading state appears
+      await waitFor(() => {
+        expect(screen.getByText('🗑️ Removing...')).toBeInTheDocument()
+      })
+
+      // Clean up
+      resolveRemoval!(undefined)
+    })
+
+    it('handles removal errors with retry functionality', async () => {
+      const mockEpisodes = [
+        {
+          ...MOCK_EPISODE,
+          downloaded: true,
+          local_file_path: '/path/to/episode.mp3',
+        },
+      ]
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
+        .mockResolvedValueOnce(mockEpisodes) // get_episodes
+        .mockRejectedValueOnce(new Error('File deletion failed')) // delete_downloaded_episode fails
+
+      render(<App />)
+
+      // Wait for episodes to load and select one
+      await waitFor(() => {
+        expect(screen.getByText('Test Episode')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('Test Episode'))
+
+      // Click remove button
+      await waitFor(() => {
+        const removeButton = screen.getByText('🗑️ Remove Download')
+        fireEvent.click(removeButton)
+      })
+
+      // Wait for error message to appear
+      await waitFor(() => {
+        expect(screen.getByText(/Remove failed/)).toBeInTheDocument()
+        expect(screen.getByText('🔄 Retry')).toBeInTheDocument()
+      })
+    })
+
+    it('prevents multiple simultaneous removals of same episode', async () => {
+      const mockEpisodes = [
+        {
+          ...MOCK_EPISODE,
+          downloaded: true,
+          local_file_path: '/path/to/episode.mp3',
+        },
+      ]
+
+      let resolveRemoval: (value: any) => void
+      const removalPromise = new Promise(resolve => {
+        resolveRemoval = resolve
+      })
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
+        .mockResolvedValueOnce(mockEpisodes) // get_episodes
+        .mockReturnValueOnce(removalPromise) // delete_downloaded_episode (pending)
+
+      render(<App />)
+
+      // Wait for episodes to load and select one
+      await waitFor(() => {
+        expect(screen.getByText('Test Episode')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('Test Episode'))
+
+      // Click remove button
+      await waitFor(() => {
+        const removeButton = screen.getByText('🗑️ Remove Download')
+        fireEvent.click(removeButton)
+      })
+
+      // Should see loading indicator
+      await waitFor(() => {
+        expect(screen.getByText('🗑️ Removing...')).toBeInTheDocument()
+      })
+
+      // Verify remove call was made
+      expect(mockInvoke).toHaveBeenCalledWith('delete_downloaded_episode', {
+        episodeId: 1,
+      })
+
+      // Clean up
+      resolveRemoval!(undefined)
+    })
+
+    it('refreshes episodes after successful removal', async () => {
+      const mockEpisodes = [
+        {
+          ...MOCK_EPISODE,
+          downloaded: true,
+          local_file_path: '/path/to/episode.mp3',
+        },
+      ]
+
+      const mockEpisodesAfterRemoval = [
+        {
+          ...MOCK_EPISODE,
+          downloaded: false,
+          local_file_path: null,
+        },
+      ]
+
+      mockInvoke
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts
+        .mockResolvedValueOnce([]) // get_usb_devices
+        .mockResolvedValueOnce(mockEpisodes) // get_episodes
+        .mockResolvedValueOnce(undefined) // delete_downloaded_episode
+        .mockResolvedValueOnce([MOCK_PODCAST]) // get_podcasts (refresh)
+        .mockResolvedValueOnce(mockEpisodesAfterRemoval) // get_episodes (refresh)
+
+      render(<App />)
+
+      // Wait for episodes to load and select one
+      await waitFor(() => {
+        expect(screen.getByText('Test Episode')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByText('Test Episode'))
+
+      // Initially should show remove button
+      await waitFor(() => {
+        expect(screen.getByText('🗑️ Remove Download')).toBeInTheDocument()
+      })
+
+      // Click remove button
+      const removeButton = screen.getByText('🗑️ Remove Download')
+      fireEvent.click(removeButton)
+
+      // After removal, should show download button instead
+      await waitFor(() => {
+        expect(screen.getByText('📥 Download Episode')).toBeInTheDocument()
+        expect(screen.queryByText('🗑️ Remove Download')).not.toBeInTheDocument()
+      })
     })
   })
 })

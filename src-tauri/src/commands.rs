@@ -93,8 +93,8 @@ pub struct DownloadProgressResponse {
     pub downloaded_bytes: u64,
     pub total_bytes: u64,
     pub percentage: f64,
-    pub speed_bps: f64,        // Frontend expects speed_bps, not speed_bytes_per_sec
-    pub eta_seconds: u64,      // Frontend expects number, not Option<u64>
+    pub speed_bps: f64,   // Frontend expects speed_bps, not speed_bytes_per_sec
+    pub eta_seconds: u64, // Frontend expects number, not Option<u64>
 }
 
 // Global instances (to be initialized in lib.rs)
@@ -365,13 +365,10 @@ pub async fn download_episode(episode_id: i64) -> Result<(), String> {
 
     // Get episode information
     log::info!("DEBUG: Getting episode information from database");
-    let episodes = db
-        .get_episodes(None)
-        .await
-        .map_err(|e| {
-            log::error!("DEBUG: Failed to get episodes from database: {}", e);
-            format!("Failed to get episode: {}", e)
-        })?;
+    let episodes = db.get_episodes(None).await.map_err(|e| {
+        log::error!("DEBUG: Failed to get episodes from database: {}", e);
+        format!("Failed to get episode: {}", e)
+    })?;
     log::info!("DEBUG: Retrieved {} episodes from database", episodes.len());
 
     let episode = episodes
@@ -645,6 +642,57 @@ pub async fn remove_episode_from_device(episode_id: i64, device_id: String) -> R
         episode_id,
         device_id
     );
+    Ok(())
+}
+
+// Episode file management commands
+#[tauri::command]
+pub async fn delete_downloaded_episode(episode_id: i64) -> Result<(), String> {
+    log::info!("Deleting downloaded episode: {}", episode_id);
+
+    // Get managers
+    let db_lock = DATABASE.lock().await;
+    let db = db_lock.as_ref().ok_or("Database not initialized")?;
+
+    let file_lock = FILE_MANAGER.lock().await;
+    let file_manager = file_lock.as_ref().ok_or("File manager not initialized")?;
+
+    // Get episode info
+    let episodes = db
+        .get_episodes(None)
+        .await
+        .map_err(|e| format!("Failed to get episode: {}", e))?;
+
+    let episode = episodes
+        .iter()
+        .find(|e| e.id == episode_id)
+        .ok_or("Episode not found")?;
+
+    // Verify episode is downloaded
+    if !episode.downloaded {
+        return Err("Episode is not downloaded".to_string());
+    }
+
+    // Delete file from disk using actual file path
+    if let Some(file_path) = &episode.local_file_path {
+        file_manager
+            .delete_episode_by_path(episode_id, file_path)
+            .await
+            .map_err(|e| format!("Failed to delete file: {}", e))?;
+    } else {
+        // Fallback to old method if local_file_path is not available
+        file_manager
+            .delete_episode(episode.podcast_id, episode_id)
+            .await
+            .map_err(|e| format!("Failed to delete file: {}", e))?;
+    }
+
+    // Update database
+    db.update_episode_downloaded_status(episode_id, false, None)
+        .await
+        .map_err(|e| format!("Failed to update database: {}", e))?;
+
+    log::info!("Successfully deleted downloaded episode: {}", episode_id);
     Ok(())
 }
 
@@ -1355,7 +1403,11 @@ mod tests {
             progress.is_ok(),
             "Should return 0% for non-existent episode"
         );
-        assert_eq!(progress.unwrap(), 0.0, "Should return 0% progress");
+        assert_eq!(
+            progress.unwrap().percentage,
+            0.0,
+            "Should return 0% progress"
+        );
     }
 
     #[tokio::test]
@@ -2401,5 +2453,226 @@ mod tests {
             episodes[0].title, "JavaScript Fundamentals",
             "User Story #12: Should find the correct episode"
         );
+    }
+
+    // NEW FEATURE: Delete Downloaded Episode Tests (TDD)
+    #[tokio::test]
+    #[serial]
+    async fn test_delete_downloaded_episode_command() {
+        // Test deleting a downloaded episode (file and database cleanup)
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+        let server = MockServer::start();
+
+        let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+            <title>Delete Test Podcast</title>
+            <description>Testing episode deletion</description>
+            <item>
+                <title>Episode to Delete</title>
+                <description>This episode will be deleted</description>
+                <enclosure url="https://example.com/delete-me.mp3" type="audio/mpeg" length="1000000"/>
+                <pubDate>Wed, 01 Jan 2023 00:00:00 +0000</pubDate>
+            </item>
+        </channel>
+        </rss>"#;
+
+        let feed_mock = server.mock(|when, then| {
+            when.method(GET).path("/delete-test.xml");
+            then.status(200).body(mock_feed);
+        });
+
+        let episode_mock = server.mock(|when, then| {
+            when.method(GET).path("/delete-me.mp3");
+            then.status(200)
+                .body(b"fake episode content for deletion test");
+        });
+
+        // Add podcast and get episode
+        let podcast = add_podcast(server.url("/delete-test.xml")).await.unwrap();
+        let episodes = get_episodes(Some(podcast.id)).await.unwrap();
+        assert_eq!(episodes.len(), 1);
+        let episode_id = episodes[0].id;
+
+        // Verify episode is not downloaded initially
+        assert!(!episodes[0].downloaded);
+
+        // Download the episode first
+        let download_result = download_episode(episode_id).await;
+        assert!(download_result.is_ok(), "Download should succeed");
+
+        // Wait for download to complete
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        // Verify episode is now downloaded
+        let episodes_after_download = get_episodes(Some(podcast.id)).await.unwrap();
+        let downloaded_episode = episodes_after_download
+            .iter()
+            .find(|e| e.id == episode_id)
+            .unwrap();
+        assert!(
+            downloaded_episode.downloaded,
+            "Episode should be downloaded"
+        );
+        assert!(
+            downloaded_episode.local_file_path.is_some(),
+            "Episode should have local file path"
+        );
+
+        // Now test deletion
+        let delete_result = delete_downloaded_episode(episode_id).await;
+        assert!(
+            delete_result.is_ok(),
+            "Delete should succeed: {:?}",
+            delete_result
+        );
+
+        // Verify episode is no longer downloaded in database
+        let episodes_after_delete = get_episodes(Some(podcast.id)).await.unwrap();
+        let deleted_episode = episodes_after_delete
+            .iter()
+            .find(|e| e.id == episode_id)
+            .unwrap();
+        assert!(
+            !deleted_episode.downloaded,
+            "Episode should not be downloaded"
+        );
+        assert!(
+            deleted_episode.local_file_path.is_none(),
+            "Episode should not have local file path"
+        );
+
+        feed_mock.assert();
+        episode_mock.assert();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_delete_downloaded_episode_not_downloaded() {
+        // Test deleting an episode that is not downloaded (should fail)
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+        let server = MockServer::start();
+
+        let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+            <title>Not Downloaded Test</title>
+            <description>Testing deletion of non-downloaded episode</description>
+            <item>
+                <title>Not Downloaded Episode</title>
+                <description>This episode is not downloaded</description>
+                <enclosure url="https://example.com/not-downloaded.mp3" type="audio/mpeg" length="1000000"/>
+                <pubDate>Wed, 01 Jan 2023 00:00:00 +0000</pubDate>
+            </item>
+        </channel>
+        </rss>"#;
+
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/not-downloaded.xml");
+            then.status(200).body(mock_feed);
+        });
+
+        let podcast = add_podcast(server.url("/not-downloaded.xml"))
+            .await
+            .unwrap();
+        let episodes = get_episodes(Some(podcast.id)).await.unwrap();
+        let episode_id = episodes[0].id;
+
+        // Verify episode is not downloaded
+        assert!(!episodes[0].downloaded);
+
+        // Try to delete - should fail
+        let delete_result = delete_downloaded_episode(episode_id).await;
+        assert!(
+            delete_result.is_err(),
+            "Delete should fail for non-downloaded episode"
+        );
+        assert!(delete_result.unwrap_err().contains("not downloaded"));
+
+        mock.assert();
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_delete_downloaded_episode_nonexistent() {
+        // Test deleting a non-existent episode (should fail)
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+
+        let delete_result = delete_downloaded_episode(999).await;
+        assert!(
+            delete_result.is_err(),
+            "Delete should fail for non-existent episode"
+        );
+        assert!(delete_result.unwrap_err().contains("not found"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn test_delete_downloaded_episode_file_cleanup() {
+        // Test that actual file is removed from disk
+        let (_db, _rss, _file, _usb) = setup_test_environment().await;
+        let server = MockServer::start();
+
+        let mock_feed = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+            <title>File Cleanup Test</title>
+            <description>Testing file cleanup on deletion</description>
+            <item>
+                <title>File Cleanup Episode</title>
+                <description>This episode's file will be cleaned up</description>
+                <enclosure url="https://example.com/cleanup.mp3" type="audio/mpeg" length="1000000"/>
+                <pubDate>Wed, 01 Jan 2023 00:00:00 +0000</pubDate>
+            </item>
+        </channel>
+        </rss>"#;
+
+        let feed_mock = server.mock(|when, then| {
+            when.method(GET).path("/cleanup.xml");
+            then.status(200).body(mock_feed);
+        });
+
+        let episode_mock = server.mock(|when, then| {
+            when.method(GET).path("/cleanup.mp3");
+            then.status(200).body(b"content for file cleanup test");
+        });
+
+        let podcast = add_podcast(server.url("/cleanup.xml")).await.unwrap();
+        let episodes = get_episodes(Some(podcast.id)).await.unwrap();
+        let episode_id = episodes[0].id;
+
+        // Download episode
+        let download_result = download_episode(episode_id).await;
+        assert!(download_result.is_ok());
+
+        // Wait for download to complete
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        // Get file path
+        let episodes_after_download = get_episodes(Some(podcast.id)).await.unwrap();
+        let downloaded_episode = episodes_after_download
+            .iter()
+            .find(|e| e.id == episode_id)
+            .unwrap();
+        let file_path = downloaded_episode.local_file_path.as_ref().unwrap();
+
+        // Verify file exists
+        assert!(
+            std::path::Path::new(file_path).exists(),
+            "File should exist after download"
+        );
+
+        // Delete episode
+        let delete_result = delete_downloaded_episode(episode_id).await;
+        assert!(delete_result.is_ok());
+
+        // Verify file is removed
+        assert!(
+            !std::path::Path::new(file_path).exists(),
+            "File should be removed after deletion"
+        );
+
+        feed_mock.assert();
+        episode_mock.assert();
     }
 }

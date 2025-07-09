@@ -4,7 +4,7 @@ import App from '../App'
 
 // Mock Tauri API for E2E integration testing
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn()
+  invoke: vi.fn(),
 }))
 
 import { invoke } from '@tauri-apps/api/core'
@@ -18,86 +18,88 @@ const mockUsbDevices = [
     path: '/media/patrick/SANDISK',
     total_space: 32000000000, // 32GB
     available_space: 16000000000, // 16GB available (50% full)
-    is_connected: true
+    is_connected: true,
   },
   {
-    id: 'usb-device-2', 
+    id: 'usb-device-2',
     name: 'Kingston DataTraveler',
     path: '/media/patrick/KINGSTON',
     total_space: 8000000000, // 8GB
     available_space: 2000000000, // 2GB available (75% full)
-    is_connected: true
-  }
+    is_connected: true,
+  },
 ]
 
 const mockPodcast = {
   id: 1,
-  name: "Test Podcast",
-  rss_url: "https://example.com/feed.xml",
-  description: "A test podcast for USB E2E testing",
+  name: 'Test Podcast',
+  rss_url: 'https://example.com/feed.xml',
+  description: 'A test podcast for USB E2E testing',
   artwork_url: null,
   website_url: null,
   last_updated: null,
   episode_count: 2,
-  new_episode_count: 2
+  new_episode_count: 2,
 }
 
 const mockEpisodes = [
   {
     id: 1,
     podcast_id: 1,
-    podcast_name: "Test Podcast",
-    title: "Episode 1: Introduction",
-    description: "First episode for USB testing",
-    episode_url: "https://example.com/episode1.mp3",
-    published_date: "2024-01-01",
+    podcast_name: 'Test Podcast',
+    title: 'Episode 1: Introduction',
+    description: 'First episode for USB testing',
+    episode_url: 'https://example.com/episode1.mp3',
+    published_date: '2024-01-01',
     duration: 1800,
     file_size: 25000000, // 25MB
-    local_file_path: "/tmp/podpico/episode1.mp3",
-    status: "new",
+    local_file_path: '/tmp/podpico/episode1.mp3',
+    status: 'new',
     downloaded: true,
-    on_device: false
+    on_device: false,
   },
   {
     id: 2,
     podcast_id: 1,
-    podcast_name: "Test Podcast",
-    title: "Episode 2: Deep Dive",
-    description: "Second episode for USB testing",
-    episode_url: "https://example.com/episode2.mp3",
-    published_date: "2024-01-02",
+    podcast_name: 'Test Podcast',
+    title: 'Episode 2: Deep Dive',
+    description: 'Second episode for USB testing',
+    episode_url: 'https://example.com/episode2.mp3',
+    published_date: '2024-01-02',
     duration: 2400,
     file_size: 30000000, // 30MB
-    local_file_path: "/tmp/podpico/episode2.mp3",
-    status: "new",
+    local_file_path: '/tmp/podpico/episode2.mp3',
+    status: 'new',
     downloaded: true,
-    on_device: false
-  }
+    on_device: false,
+  },
 ]
 
 describe('User Story #8: USB Device Management - End-to-End Integration Tests', () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks()
-    
+
     // Setup default mock responses that simulate real backend behavior
     mockInvoke.mockImplementation((command: string, args?: any) => {
       switch (command) {
         case 'get_podcasts':
           return Promise.resolve([mockPodcast])
-        
+
         case 'get_episodes':
           if (args?.podcastId === 1) {
             return Promise.resolve(mockEpisodes)
           } else if (args?.podcastId === null) {
-            return Promise.resolve(mockEpisodes.filter(ep => ep.status === 'new'))
+            return Promise.resolve(
+              mockEpisodes.filter(ep => ep.status === 'new')
+            )
           }
           return Promise.resolve([])
-        
+
         case 'get_usb_devices':
           // Simulate USB device detection
           return Promise.resolve(mockUsbDevices)
-          
+
         default:
           return Promise.reject(new Error(`Unhandled command: ${command}`))
       }
@@ -110,19 +112,28 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
 
   describe('Complete USB Device Detection User Journey', () => {
     it('should complete full USB device detection workflow with frontend-backend integration', async () => {
-      console.log('🚀 Testing complete USB device detection workflow E2E integration...')
-      
+      console.log(
+        '🚀 Testing complete USB device detection workflow E2E integration...'
+      )
+
       render(<App />)
 
       // Step 1: Wait for app to load and verify initial backend calls
-      await waitFor(() => {
-        expect(screen.getByText('PodPico')).toBeInTheDocument()
-      }, { timeout: 5000 })
+      await waitFor(
+        () => {
+          expect(screen.getByText('PodPico')).toBeInTheDocument()
+        },
+        { timeout: 5000 }
+      )
 
       expect(mockInvoke).toHaveBeenCalledWith('get_podcasts')
-      expect(mockInvoke).toHaveBeenCalledWith('get_episodes', { podcastId: null })
+      expect(mockInvoke).toHaveBeenCalledWith('get_episodes', {
+        podcastId: null,
+      })
       expect(mockInvoke).toHaveBeenCalledWith('get_usb_devices')
-      console.log('✅ App loaded with initial backend calls including USB detection')
+      console.log(
+        '✅ App loaded with initial backend calls including USB detection'
+      )
 
       // Step 2: Verify USB Device section is displayed
       await waitFor(() => {
@@ -150,22 +161,28 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
       // Step 5: Verify progress bars are shown with correct accessibility
       const progressBars = screen.getAllByRole('progressbar')
       expect(progressBars.length).toBeGreaterThan(0)
-      
+
       // SanDisk should show 50% usage (16GB used out of 32GB total)
-      const sandiskProgressBar = progressBars.find(bar => 
+      const sandiskProgressBar = progressBars.find(bar =>
         bar.getAttribute('aria-label')?.includes('50%')
       )
       expect(sandiskProgressBar).toBeDefined()
-      console.log('✅ Progress bars displayed with correct percentages and accessibility attributes')
+      console.log(
+        '✅ Progress bars displayed with correct percentages and accessibility attributes'
+      )
 
-      console.log('🎉 Complete USB device detection E2E integration test PASSED!')
+      console.log(
+        '🎉 Complete USB device detection E2E integration test PASSED!'
+      )
     })
 
     it('should handle USB device detection performance requirements', async () => {
-      console.log('🚀 Testing USB device detection performance E2E integration...')
-      
+      console.log(
+        '🚀 Testing USB device detection performance E2E integration...'
+      )
+
       // Add realistic delay to simulate detection time
-      mockInvoke.mockImplementation((command: string, args?: any) => {
+      mockInvoke.mockImplementation((command: string) => {
         switch (command) {
           case 'get_podcasts':
             return Promise.resolve([mockPodcast])
@@ -185,22 +202,27 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
       render(<App />)
 
       // Wait for USB devices to be detected and displayed
-      await waitFor(() => {
-        expect(screen.getByText('SanDisk Ultra USB 3.0')).toBeInTheDocument()
-      }, { timeout: 6000 }) // Allow up to 6 seconds but should complete in ~2
+      await waitFor(
+        () => {
+          expect(screen.getByText('SanDisk Ultra USB 3.0')).toBeInTheDocument()
+        },
+        { timeout: 6000 }
+      ) // Allow up to 6 seconds but should complete in ~2
 
       const detectionTime = Date.now() - startTime
       expect(detectionTime).toBeLessThan(5000) // User Story #8 acceptance criteria
-      console.log(`✅ USB detection completed in ${detectionTime}ms (under 5 second requirement)`)
+      console.log(
+        `✅ USB detection completed in ${detectionTime}ms (under 5 second requirement)`
+      )
 
       console.log('🎉 USB device detection performance E2E test PASSED!')
     })
 
     it('should handle no USB devices connected scenario', async () => {
       console.log('🚀 Testing no USB devices connected E2E integration...')
-      
+
       // Mock empty USB devices response
-      mockInvoke.mockImplementation((command: string, args?: any) => {
+      mockInvoke.mockImplementation((command: string) => {
         switch (command) {
           case 'get_podcasts':
             return Promise.resolve([mockPodcast])
@@ -229,17 +251,21 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
     })
 
     it('should handle USB device detection errors gracefully', async () => {
-      console.log('🚀 Testing USB device detection error handling E2E integration...')
-      
+      console.log(
+        '🚀 Testing USB device detection error handling E2E integration...'
+      )
+
       // Mock USB detection failure
-      mockInvoke.mockImplementation((command: string, args?: any) => {
+      mockInvoke.mockImplementation((command: string) => {
         switch (command) {
           case 'get_podcasts':
             return Promise.resolve([mockPodcast])
           case 'get_episodes':
             return Promise.resolve(mockEpisodes)
           case 'get_usb_devices':
-            return Promise.reject(new Error('USB detection service unavailable'))
+            return Promise.reject(
+              new Error('USB detection service unavailable')
+            )
           default:
             return Promise.reject(new Error(`Unhandled command: ${command}`))
         }
@@ -253,8 +279,12 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
 
       // Verify error state is displayed
       await waitFor(() => {
-        expect(screen.getByText(/Failed to detect USB devices/)).toBeInTheDocument()
-        expect(screen.getByText(/USB detection service unavailable/)).toBeInTheDocument()
+        expect(
+          screen.getByText(/Failed to detect USB devices/)
+        ).toBeInTheDocument()
+        expect(
+          screen.getByText(/USB detection service unavailable/)
+        ).toBeInTheDocument()
       })
       console.log('✅ Error state displayed correctly')
 
@@ -270,8 +300,10 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
 
   describe('USB Device Integration with Episode Management', () => {
     it('should display USB devices alongside episode management workflow', async () => {
-      console.log('🚀 Testing USB device display during episode management E2E integration...')
-      
+      console.log(
+        '🚀 Testing USB device display during episode management E2E integration...'
+      )
+
       render(<App />)
 
       // Wait for full app to load
@@ -307,14 +339,18 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
       expect(screen.getByText('Kingston DataTraveler')).toBeInTheDocument()
       console.log('✅ USB devices remain visible during episode selection')
 
-      console.log('🎉 USB device integration with episode management E2E test PASSED!')
+      console.log(
+        '🎉 USB device integration with episode management E2E test PASSED!'
+      )
     })
 
     it('should handle simultaneous USB detection and episode loading', async () => {
-      console.log('🚀 Testing simultaneous USB detection and episode loading E2E integration...')
-      
+      console.log(
+        '🚀 Testing simultaneous USB detection and episode loading E2E integration...'
+      )
+
       // Add delays to both operations to test concurrency
-      mockInvoke.mockImplementation((command: string, args?: any) => {
+      mockInvoke.mockImplementation((command: string) => {
         switch (command) {
           case 'get_podcasts':
             return new Promise(resolve => {
@@ -337,26 +373,37 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
       render(<App />)
 
       // Wait for USB devices to load first (should be fastest)
-      await waitFor(() => {
-        expect(screen.getByText('SanDisk Ultra USB 3.0')).toBeInTheDocument()
-      }, { timeout: 2000 })
-      
+      await waitFor(
+        () => {
+          expect(screen.getByText('SanDisk Ultra USB 3.0')).toBeInTheDocument()
+        },
+        { timeout: 2000 }
+      )
+
       const usbLoadTime = Date.now() - startTime
       console.log(`✅ USB devices loaded in ${usbLoadTime}ms`)
 
       // Wait for podcasts to load
-      await waitFor(() => {
-        expect(screen.getByText('Test Podcast')).toBeInTheDocument()
-      }, { timeout: 3000 })
-      
+      await waitFor(
+        () => {
+          expect(screen.getByText('Test Podcast')).toBeInTheDocument()
+        },
+        { timeout: 3000 }
+      )
+
       const podcastLoadTime = Date.now() - startTime
       console.log(`✅ Podcasts loaded in ${podcastLoadTime}ms`)
 
-      // Wait for episodes to load  
-      await waitFor(() => {
-        expect(screen.getByText('Episode 1: Introduction')).toBeInTheDocument()
-      }, { timeout: 4000 })
-      
+      // Wait for episodes to load
+      await waitFor(
+        () => {
+          expect(
+            screen.getByText('Episode 1: Introduction')
+          ).toBeInTheDocument()
+        },
+        { timeout: 4000 }
+      )
+
       const episodeLoadTime = Date.now() - startTime
       console.log(`✅ Episodes loaded in ${episodeLoadTime}ms`)
 
@@ -365,9 +412,13 @@ describe('User Story #8: USB Device Management - End-to-End Integration Tests', 
       expect(screen.getByText('SanDisk Ultra USB 3.0')).toBeInTheDocument()
       expect(screen.getByText('Test Podcast')).toBeInTheDocument()
       expect(screen.getByText('Episode 1: Introduction')).toBeInTheDocument()
-      
-      console.log('✅ All components loaded successfully with concurrent operations')
-      console.log('🎉 Simultaneous USB detection and episode loading E2E test PASSED!')
+
+      console.log(
+        '✅ All components loaded successfully with concurrent operations'
+      )
+      console.log(
+        '🎉 Simultaneous USB detection and episode loading E2E test PASSED!'
+      )
     })
   })
-}) 
+})

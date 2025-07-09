@@ -60,22 +60,42 @@ function App() {
   const [error, setError] = useState('')
   const [rssUrl, setRssUrl] = useState('')
   const [addingPodcast, setAddingPodcast] = useState(false)
-  
+
   // User Story #12: Search for episodes within a podcast
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Episode[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isSearchMode, setIsSearchMode] = useState(false)
-  
+
   // User Story #3: Download Episodes - State management
-  const [downloadingEpisodes, setDownloadingEpisodes] = useState<Set<number>>(new Set())
-  const [downloadProgress, setDownloadProgress] = useState<Map<number, DownloadProgress>>(new Map())
-  const [downloadErrors, setDownloadErrors] = useState<Map<number, string>>(new Map())
+  const [downloadingEpisodes, setDownloadingEpisodes] = useState<Set<number>>(
+    new Set()
+  )
+  const [downloadProgress, setDownloadProgress] = useState<
+    Map<number, DownloadProgress>
+  >(new Map())
+  const [downloadErrors, setDownloadErrors] = useState<Map<number, string>>(
+    new Map()
+  )
+
+  // Remove Downloaded Episodes - State management
+  const [removingEpisodes, setRemovingEpisodes] = useState<Set<number>>(
+    new Set()
+  )
+  const [removeEpisodeErrors, setRemoveEpisodeErrors] = useState<
+    Map<number, string>
+  >(new Map())
 
   // User Story #4: Remove Podcasts - State management
-  const [removingPodcasts, setRemovingPodcasts] = useState<Set<number>>(new Set())
-  const [removeErrors, setRemoveErrors] = useState<Map<number, string>>(new Map())
-  const [showRemoveConfirm, setShowRemoveConfirm] = useState<number | null>(null)
+  const [removingPodcasts, setRemovingPodcasts] = useState<Set<number>>(
+    new Set()
+  )
+  const [removeErrors, setRemoveErrors] = useState<Map<number, string>>(
+    new Map()
+  )
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState<number | null>(
+    null
+  )
 
   // User Story #8: USB Device Management - State management
   const [usbDevices, setUsbDevices] = useState<UsbDevice[]>([])
@@ -148,13 +168,13 @@ function App() {
   async function loadUsbDevices() {
     setUsbLoading(true)
     setUsbError(null)
-    
+
     try {
       // User Story #8 Acceptance Criteria: Detection within 5 seconds
       const startTime = Date.now()
-      
+
       const devices: UsbDevice[] = await invoke('get_usb_devices')
-      
+
       const detectionTime = Date.now() - startTime
       if (detectionTime > 5000) {
         // eslint-disable-next-line no-console
@@ -162,7 +182,7 @@ function App() {
           `User Story #8: USB detection took ${detectionTime}ms, should be under 5 seconds`
         )
       }
-      
+
       setUsbDevices(devices)
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -176,7 +196,7 @@ function App() {
 
   async function addPodcast() {
     console.log('DEBUG: Starting addPodcast function')
-    
+
     if (!rssUrl.trim()) {
       console.log('DEBUG: RSS URL is empty')
       setError('Please enter an RSS URL')
@@ -196,7 +216,7 @@ function App() {
       console.log('DEBUG: Reloading podcasts')
       await loadPodcasts()
       console.log('DEBUG: Podcasts reloaded')
-      
+
       setRssUrl('')
       setError('')
       console.log('DEBUG: addPodcast completed successfully')
@@ -244,46 +264,49 @@ function App() {
 
   // User Story #12: Search for episodes within a podcast
   // Acceptance Criteria: Search results appear within 2 seconds with highlighted text
-  const searchEpisodes = useCallback(async (query: string) => {
-    if (!selectedPodcast) return
+  const searchEpisodes = useCallback(
+    async (query: string) => {
+      if (!selectedPodcast) return
 
-    setIsSearching(true)
-    try {
-      const startTime = Date.now()
-      
-      if (query.trim() === '') {
-        // Clear search - return to normal episode list
-        setIsSearchMode(false)
-        setSearchResults([])
-        await loadEpisodes(selectedPodcast.id)
-      } else {
-        // Perform search
-        const results: Episode[] = await invoke('search_episodes', {
-          podcastId: selectedPodcast.id,
-          searchQuery: query,
-        })
+      setIsSearching(true)
+      try {
+        const startTime = Date.now()
 
-        const searchTime = Date.now() - startTime
-        
-        // Performance monitoring for User Story #12 acceptance criteria
-        if (searchTime > 2000) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            `User Story #12: Search took ${searchTime}ms, should be under 2 seconds`
-          )
+        if (query.trim() === '') {
+          // Clear search - return to normal episode list
+          setIsSearchMode(false)
+          setSearchResults([])
+          await loadEpisodes(selectedPodcast.id)
+        } else {
+          // Perform search
+          const results: Episode[] = await invoke('search_episodes', {
+            podcastId: selectedPodcast.id,
+            searchQuery: query,
+          })
+
+          const searchTime = Date.now() - startTime
+
+          // Performance monitoring for User Story #12 acceptance criteria
+          if (searchTime > 2000) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `User Story #12: Search took ${searchTime}ms, should be under 2 seconds`
+            )
+          }
+
+          setSearchResults(results)
+          setIsSearchMode(true)
         }
-
-        setSearchResults(results)
-        setIsSearchMode(true)
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to search episodes:', err)
+        setError(`Failed to search episodes: ${err}`)
+      } finally {
+        setIsSearching(false)
       }
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to search episodes:', err)
-      setError(`Failed to search episodes: ${err}`)
-    } finally {
-      setIsSearching(false)
-    }
-  }, [selectedPodcast])
+    },
+    [selectedPodcast]
+  )
 
   // Debounced search effect for User Story #12
   // Acceptance Criteria: Search results appear within 2 seconds
@@ -357,7 +380,10 @@ function App() {
       return <>{text}</>
     }
 
-    const regex = new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    const regex = new RegExp(
+      `(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
+      'gi'
+    )
     const parts = text.split(regex)
 
     return (
@@ -378,8 +404,12 @@ function App() {
   // User Story #3: Download Episodes - Core functionality
   // Acceptance Criteria: Progress tracking, file existence validation, error messages
   async function downloadEpisode(episode: Episode) {
-    console.log('DEBUG: Starting downloadEpisode for episode:', episode.id, episode.title)
-    
+    console.log(
+      'DEBUG: Starting downloadEpisode for episode:',
+      episode.id,
+      episode.title
+    )
+
     if (downloadingEpisodes.has(episode.id)) {
       console.log('DEBUG: Episode already downloading, returning')
       return // Already downloading
@@ -398,7 +428,10 @@ function App() {
     setDownloadingEpisodes(prev => new Set(prev).add(episode.id))
 
     try {
-      console.log('DEBUG: About to call invoke download_episode with episodeId:', episode.id)
+      console.log(
+        'DEBUG: About to call invoke download_episode with episodeId:',
+        episode.id
+      )
       // Start download
       await invoke('download_episode', {
         episodeId: episode.id,
@@ -408,11 +441,12 @@ function App() {
       console.log('DEBUG: Starting progress tracking')
       // Start progress tracking
       startProgressTracking(episode.id)
-
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('DEBUG: Failed to start download:', err)
-      setDownloadErrors(prev => new Map(prev).set(episode.id, `Download failed: ${err}`))
+      setDownloadErrors(prev =>
+        new Map(prev).set(episode.id, `Download failed: ${err}`)
+      )
       setDownloadingEpisodes(prev => {
         const newSet = new Set(prev)
         newSet.delete(episode.id)
@@ -425,29 +459,37 @@ function App() {
   // Acceptance Criteria: Progress indicators with percentage display
   function startProgressTracking(episodeId: number) {
     console.log('DEBUG: Starting progress tracking for episode:', episodeId)
-    
+
     // Start checking progress immediately (not after 1 second delay)
-    let progressInterval: NodeJS.Timeout
-    
+    let progressInterval: number
+
     const checkProgress = async () => {
       try {
         console.log('DEBUG: Requesting progress for episode:', episodeId)
-        const progress: DownloadProgress = await invoke('get_download_progress', {
-          episodeId: episodeId,
-        })
-        
+        const progress: DownloadProgress = await invoke(
+          'get_download_progress',
+          {
+            episodeId: episodeId,
+          }
+        )
+
         console.log('DEBUG: Received progress data:', progress)
 
         // Validate progress data before setting state
         if (progress && typeof progress.percentage === 'number') {
-          console.log('DEBUG: Setting progress state for episode:', episodeId, 'progress:', progress.percentage)
+          console.log(
+            'DEBUG: Setting progress state for episode:',
+            episodeId,
+            'progress:',
+            progress.percentage
+          )
           setDownloadProgress(prev => new Map(prev).set(episodeId, progress))
 
           // Check if download is complete (100% or episode is now downloaded)
           if (progress.percentage >= 100) {
             console.log('DEBUG: Download completed for episode:', episodeId)
             clearInterval(progressInterval)
-            
+
             // Remove from downloading set
             setDownloadingEpisodes(prev => {
               const newSet = new Set(prev)
@@ -464,7 +506,9 @@ function App() {
 
             // Only refresh episodes data, don't change the selected episode/podcast
             // This prevents the view from changing focus
-            console.log('DEBUG: Refreshing episodes data without changing selection')
+            console.log(
+              'DEBUG: Refreshing episodes data without changing selection'
+            )
             if (selectedPodcast) {
               await loadEpisodes(selectedPodcast.id)
             } else {
@@ -476,8 +520,11 @@ function App() {
           }
         } else {
           // Invalid or no progress data - this is normal for very fast downloads
-          console.log('DEBUG: No progress data available yet for episode:', episodeId)
-          
+          console.log(
+            'DEBUG: No progress data available yet for episode:',
+            episodeId
+          )
+
           // For fast downloads, check if the episode is already downloaded
           // This can happen when the download completes before progress tracking starts
           if (selectedPodcast) {
@@ -485,17 +532,19 @@ function App() {
           } else {
             await loadEpisodes(null)
           }
-          
+
           // Check if this episode is now marked as downloaded
-          const episodes = await invoke('get_episodes', {
-            podcastId: selectedPodcast?.id || null
-          }) as Episode[]
-          
+          const episodes = (await invoke('get_episodes', {
+            podcastId: selectedPodcast?.id || null,
+          })) as Episode[]
+
           const updatedEpisode = episodes.find(e => e.id === episodeId)
           if (updatedEpisode?.downloaded) {
-            console.log('DEBUG: Episode completed during fast download, stopping progress tracking')
+            console.log(
+              'DEBUG: Episode completed during fast download, stopping progress tracking'
+            )
             clearInterval(progressInterval)
-            
+
             // Remove from downloading set
             setDownloadingEpisodes(prev => {
               const newSet = new Set(prev)
@@ -519,15 +568,17 @@ function App() {
         // eslint-disable-next-line no-console
         console.error('DEBUG: Progress tracking error:', err)
         clearInterval(progressInterval)
-        
-        setDownloadErrors(prev => new Map(prev).set(episodeId, `Progress tracking failed: ${err}`))
-        
+
+        setDownloadErrors(prev =>
+          new Map(prev).set(episodeId, `Progress tracking failed: ${err}`)
+        )
+
         setDownloadingEpisodes(prev => {
           const newSet = new Set(prev)
           newSet.delete(episodeId)
           return newSet
         })
-        
+
         setDownloadProgress(prev => {
           const newMap = new Map(prev)
           newMap.delete(episodeId)
@@ -535,10 +586,10 @@ function App() {
         })
       }
     }
-    
+
     // Check progress immediately
     checkProgress()
-    
+
     // Then set up interval to check every 500ms (faster than before for better responsiveness)
     progressInterval = setInterval(checkProgress, 500)
   }
@@ -546,11 +597,11 @@ function App() {
   // User Story #3: Format file size for display
   function formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes'
-    
+
     const k = 1024
     const sizes = ['Bytes', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
@@ -582,38 +633,87 @@ function App() {
     }
   }
 
+  // Remove Downloaded Episode - Core functionality
+  async function removeDownloadedEpisode(episode: Episode) {
+    if (removingEpisodes.has(episode.id)) {
+      return // Already removing
+    }
+
+    // Clear any previous error for this episode
+    setRemoveEpisodeErrors(prev => {
+      const newErrors = new Map(prev)
+      newErrors.delete(episode.id)
+      return newErrors
+    })
+
+    // Mark episode as being removed
+    setRemovingEpisodes(prev => new Set(prev).add(episode.id))
+
+    try {
+      // Call backend to remove downloaded episode
+      await invoke('delete_downloaded_episode', {
+        episodeId: episode.id,
+      })
+
+      // Refresh podcasts and episodes to update UI
+      await loadPodcasts()
+      if (selectedPodcast) {
+        await loadEpisodes(selectedPodcast.id)
+      } else {
+        await loadEpisodes(null)
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to remove downloaded episode:', err)
+      setRemoveEpisodeErrors(prev =>
+        new Map(prev).set(episode.id, `Remove failed: ${err}`)
+      )
+    } finally {
+      // Remove from removing set
+      setRemovingEpisodes(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(episode.id)
+        return newSet
+      })
+    }
+  }
+
   // User Story #8: USB Device Storage Formatting Functions
   function formatStorageSize(bytes: number | undefined | null): string {
     // Handle undefined, null, or non-finite values
     if (bytes == null || !isFinite(bytes) || bytes < 0) {
       return '0 B'
     }
-    
+
     if (bytes === 0) return '0 B'
-    
+
     const units = ['B', 'KB', 'MB', 'GB', 'TB']
     const k = 1024
     const i = Math.floor(Math.log(bytes) / Math.log(k))
     const size = bytes / Math.pow(k, i)
-    
+
     // Format to 1 decimal place for readability
     return `${size.toFixed(1)} ${units[i]}`
   }
 
-  function calculateStorageUsagePercentage(device: UsbDevice | undefined | null): number {
+  function calculateStorageUsagePercentage(
+    device: UsbDevice | undefined | null
+  ): number {
     // Handle undefined/null device or invalid properties
-    if (!device || 
-        device.total_space == null || 
-        device.available_space == null ||
-        !isFinite(device.total_space) || 
-        !isFinite(device.available_space) ||
-        device.total_space <= 0) {
+    if (
+      !device ||
+      device.total_space == null ||
+      device.available_space == null ||
+      !isFinite(device.total_space) ||
+      !isFinite(device.available_space) ||
+      device.total_space <= 0
+    ) {
       return 0
     }
-    
+
     const usedSpace = device.total_space - device.available_space
     const percentage = (usedSpace / device.total_space) * 100
-    
+
     // Ensure we return a valid, finite number
     return isFinite(percentage) ? Math.round(percentage) : 0
   }
@@ -658,11 +758,12 @@ function App() {
       if (!selectedPodcast) {
         await loadEpisodes(null)
       }
-
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error('Failed to remove podcast:', err)
-      setRemoveErrors(prev => new Map(prev).set(podcastId, `Remove failed: ${err}`))
+      setRemoveErrors(prev =>
+        new Map(prev).set(podcastId, `Remove failed: ${err}`)
+      )
     } finally {
       // Remove from removing set
       setRemovingPodcasts(prev => {
@@ -743,11 +844,17 @@ function App() {
                     </span>
                   )}
                 </div>
-                
+
                 {/* User Story #4: Remove podcast button */}
-                <div className="podcast-actions" onClick={e => e.stopPropagation()}>
+                <div
+                  className="podcast-actions"
+                  onClick={e => e.stopPropagation()}
+                >
                   {removingPodcasts.has(podcast.id) ? (
-                    <span className="removing-indicator" title="Removing podcast...">
+                    <span
+                      className="removing-indicator"
+                      title="Removing podcast..."
+                    >
                       ⏳
                     </span>
                   ) : (
@@ -764,7 +871,10 @@ function App() {
 
                 {/* User Story #4: Show remove errors */}
                 {removeErrors.has(podcast.id) && (
-                  <div className="podcast-error" onClick={e => e.stopPropagation()}>
+                  <div
+                    className="podcast-error"
+                    onClick={e => e.stopPropagation()}
+                  >
                     <span className="error-message">
                       {removeErrors.get(podcast.id)}
                     </span>
@@ -790,14 +900,14 @@ function App() {
           {(podcasts?.length || 0) === 0 && (
             <div className="empty-state">
               <p>No podcasts yet.</p>
-              <p>Add your first podcast using the form above!</p>
+              <p>Don&apos;t see your podcast? Add it above!</p>
             </div>
           )}
 
           {/* User Story #8: USB Device Section */}
           <div className="usb-device-section">
             <h3>USB Device</h3>
-            
+
             {usbLoading ? (
               <div className="usb-loading">
                 <span>🔍 Detecting devices...</span>
@@ -814,7 +924,7 @@ function App() {
                   🔄 Retry
                 </button>
               </div>
-            ) : (!usbDevices || usbDevices.length === 0) ? (
+            ) : !usbDevices || usbDevices.length === 0 ? (
               <div className="usb-no-device">
                 <span>📱 No device connected</span>
               </div>
@@ -823,38 +933,43 @@ function App() {
                 {usbDevices
                   .filter(device => device && device.id) // Filter out invalid devices
                   .map(device => (
-                  <div key={device.id} className="usb-device-item">
-                    <div className="device-info">
-                      <div className="device-header">
-                        <span className="device-icon">📱</span>
-                        <span className="device-name">{device.name || 'USB Device'}</span>
-                      </div>
-                      <div className="storage-info">
-                        <div className="storage-text">
-                          {formatStorageSize(device.available_space)} available of {formatStorageSize(device.total_space)}
+                    <div key={device.id} className="usb-device-item">
+                      <div className="device-info">
+                        <div className="device-header">
+                          <span className="device-icon">📱</span>
+                          <span className="device-name">
+                            {device.name || 'USB Device'}
+                          </span>
                         </div>
-                        <div 
-                          className="storage-progress-bar"
-                          role="progressbar"
-                          aria-label={`USB device storage: ${calculateStorageUsagePercentage(device)}% used`}
-                          aria-valuenow={calculateStorageUsagePercentage(device)}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                        >
-                          <div 
-                            className="storage-progress-fill"
-                            style={{
-                              width: `${calculateStorageUsagePercentage(device)}%`
-                            }}
-                          />
-                        </div>
-                        <div className="storage-percentage">
-                          {calculateStorageUsagePercentage(device)}% used
+                        <div className="storage-info">
+                          <div className="storage-text">
+                            {formatStorageSize(device.available_space)}{' '}
+                            available of {formatStorageSize(device.total_space)}
+                          </div>
+                          <div
+                            className="storage-progress-bar"
+                            role="progressbar"
+                            aria-label={`USB device storage: ${calculateStorageUsagePercentage(device)}% used`}
+                            aria-valuenow={calculateStorageUsagePercentage(
+                              device
+                            )}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                          >
+                            <div
+                              className="storage-progress-fill"
+                              style={{
+                                width: `${calculateStorageUsagePercentage(device)}%`,
+                              }}
+                            />
+                          </div>
+                          <div className="storage-percentage">
+                            {calculateStorageUsagePercentage(device)}% used
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>
@@ -868,7 +983,7 @@ function App() {
                 ? `${selectedPodcast.name} Episodes`
                 : 'All New Episodes'}
             </h2>
-            
+
             {/* User Story #12: Search for episodes within a podcast */}
             {selectedPodcast && (
               <div className="search-section">
@@ -895,12 +1010,13 @@ function App() {
                 {isSearching && <span className="search-loading">⏳</span>}
                 {isSearchMode && (
                   <span className="search-results-count">
-                    {searchResults?.length || 0} result{(searchResults?.length || 0) !== 1 ? 's' : ''}
+                    {searchResults?.length || 0} result
+                    {(searchResults?.length || 0) !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
             )}
-            
+
             <div className="episode-count-info">
               {isSearchMode
                 ? `${searchResults?.length || 0} result${(searchResults?.length || 0) !== 1 ? 's' : ''}`
@@ -915,97 +1031,104 @@ function App() {
           ) : (
             <div className="episode-list">
               {/* User Story #12: Show search results or regular episodes */}
-              {Array.isArray(isSearchMode ? searchResults : episodes) && 
+              {Array.isArray(isSearchMode ? searchResults : episodes) &&
                 (isSearchMode ? searchResults : episodes).map(episode => (
-                <div
-                  key={episode.id}
-                  className={`episode-item ${selectedEpisode?.id === episode.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedEpisode(episode)}
-                >
-                  {/* User Story #6: See episode status within each podcast */}
-                  <div className="episode-status">
-                    <span className="status-icon" title={episode.status}>
-                      {getStatusIcon(episode.status)}
-                    </span>
-                  </div>
-
-                  <div className="episode-info">
-                    <h3 className="episode-title">
-                      {isSearchMode ? highlightText(episode.title, searchQuery) : episode.title}
-                    </h3>
-                    <div className="episode-meta">
-                      {!selectedPodcast && (
-                        <span className="podcast-name">
-                          {episode.podcast_name} •{' '}
-                        </span>
-                      )}
-                      <span className="episode-date">
-                        {formatDate(episode.published_date)}
+                  <div
+                    key={episode.id}
+                    className={`episode-item ${selectedEpisode?.id === episode.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedEpisode(episode)}
+                  >
+                    {/* User Story #6: See episode status within each podcast */}
+                    <div className="episode-status">
+                      <span className="status-icon" title={episode.status}>
+                        {getStatusIcon(episode.status)}
                       </span>
-                      {episode.duration && (
-                        <span className="episode-duration">
-                          {' '}
-                          • {formatDuration(episode.duration)}
+                    </div>
+
+                    <div className="episode-info">
+                      <h3 className="episode-title">
+                        {isSearchMode
+                          ? highlightText(episode.title, searchQuery)
+                          : episode.title}
+                      </h3>
+                      <div className="episode-meta">
+                        {!selectedPodcast && (
+                          <span className="podcast-name">
+                            {episode.podcast_name} •{' '}
+                          </span>
+                        )}
+                        <span className="episode-date">
+                          {formatDate(episode.published_date)}
                         </span>
-                      )}
-                      
-                      {/* User Story #3: Download status indicators in episode list */}
-                      {episode.downloaded && (
-                        <span className="download-indicator downloaded">
-                          • 📥 Downloaded
-                        </span>
-                      )}
-                      {downloadingEpisodes.has(episode.id) && (
-                        <span className="download-indicator downloading">
-                          • ⏳ Downloading
-                          {downloadProgress.has(episode.id) && (
-                            <span className="inline-progress">
-                              ({downloadProgress.get(episode.id)!.percentage.toFixed(0)}%)
-                            </span>
-                          )}
-                        </span>
-                      )}
-                      {downloadErrors.has(episode.id) && (
-                        <span className="download-indicator error">
-                          • ⚠️ Download Failed
-                        </span>
-                      )}
+                        {episode.duration && (
+                          <span className="episode-duration">
+                            {' '}
+                            • {formatDuration(episode.duration)}
+                          </span>
+                        )}
+
+                        {/* User Story #3: Download status indicators in episode list */}
+                        {episode.downloaded && (
+                          <span className="download-indicator downloaded">
+                            • 📥 Downloaded
+                          </span>
+                        )}
+                        {downloadingEpisodes.has(episode.id) && (
+                          <span className="download-indicator downloading">
+                            • ⏳ Downloading
+                            {downloadProgress.has(episode.id) && (
+                              <span className="inline-progress">
+                                (
+                                {downloadProgress
+                                  .get(episode.id)!
+                                  .percentage.toFixed(0)}
+                                %)
+                              </span>
+                            )}
+                          </span>
+                        )}
+                        {downloadErrors.has(episode.id) && (
+                          <span className="download-indicator error">
+                            • ⚠️ Download Failed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* User Story #5: Mark episodes as listened */}
+                    <div
+                      className="episode-actions"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <select
+                        value={episode.status}
+                        onChange={e =>
+                          updateEpisodeStatus(episode.id, e.target.value)
+                        }
+                        className="status-selector"
+                      >
+                        <option value="new">New</option>
+                        <option value="unlistened">Unlistened</option>
+                        <option value="listened">Listened</option>
+                      </select>
                     </div>
                   </div>
-
-                  {/* User Story #5: Mark episodes as listened */}
-                  <div
-                    className="episode-actions"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <select
-                      value={episode.status}
-                      onChange={e =>
-                        updateEpisodeStatus(episode.id, e.target.value)
-                      }
-                      className="status-selector"
-                    >
-                      <option value="new">New</option>
-                      <option value="unlistened">Unlistened</option>
-                      <option value="listened">Listened</option>
-                    </select>
-                  </div>
-                </div>
-              ))}
+                ))}
 
               {/* User Story #12: Handle empty search results */}
-              {(isSearchMode 
-                ? (!Array.isArray(searchResults) || searchResults.length === 0) 
-                : (!Array.isArray(episodes) || episodes.length === 0)
-              ) && !loading && !isSearching && (
-                <div className="empty-state">
-                  {isSearchMode
-                    ? `No episodes found matching "${searchQuery}"`
-                    : selectedPodcast
-                    ? `No episodes found for ${selectedPodcast.name}`
-                    : 'No new episodes across all podcasts'}
-                </div>
-              )}
+              {(isSearchMode
+                ? !Array.isArray(searchResults) || searchResults.length === 0
+                : !Array.isArray(episodes) || episodes.length === 0) &&
+                !loading &&
+                !isSearching && (
+                  <div className="empty-state">
+                    {isSearchMode
+                      ? `No episodes found matching "${searchQuery}"`
+                      : selectedPodcast
+                        ? `No episodes found for ${selectedPodcast.name}`
+                        : 'No new episodes across all podcasts'}
+                  </div>
+                )}
             </div>
           )}
         </section>
@@ -1017,7 +1140,9 @@ function App() {
               <header className="episode-header">
                 <h2>
                   {/* User Story #12: Highlight search terms in episode details title */}
-                  {isSearchMode && searchQuery ? highlightText(selectedEpisode.title, searchQuery) : selectedEpisode.title}
+                  {isSearchMode && searchQuery
+                    ? highlightText(selectedEpisode.title, searchQuery)
+                    : selectedEpisode.title}
                 </h2>
                 <div className="episode-meta-detailed">
                   <div className="meta-row">
@@ -1097,14 +1222,31 @@ function App() {
                   {/* User Story #3: Download Episodes - Functional implementation */}
                   {selectedEpisode.downloaded ? (
                     <div className="download-status">
-                      <span className="download-complete">
-                        ✅ Downloaded
-                      </span>
+                      <span className="download-complete">✅ Downloaded</span>
                       {selectedEpisode.local_file_path && (
                         <small className="file-path">
                           {selectedEpisode.local_file_path}
                         </small>
                       )}
+
+                      {/* Remove Downloaded Episode - Button */}
+                      <div className="remove-download-actions">
+                        {removingEpisodes.has(selectedEpisode.id) ? (
+                          <span className="removing-indicator">
+                            🗑️ Removing...
+                          </span>
+                        ) : (
+                          <button
+                            className="remove-download-button"
+                            onClick={() =>
+                              removeDownloadedEpisode(selectedEpisode)
+                            }
+                            title="Remove downloaded episode file"
+                          >
+                            🗑️ Remove Download
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ) : downloadingEpisodes.has(selectedEpisode.id) ? (
                     <div className="download-progress-container">
@@ -1112,31 +1254,49 @@ function App() {
                         <span>📥 Downloading...</span>
                         {downloadProgress.has(selectedEpisode.id) && (
                           <span className="progress-percentage">
-                            {downloadProgress.get(selectedEpisode.id)!.percentage.toFixed(1)}%
+                            {downloadProgress
+                              .get(selectedEpisode.id)!
+                              .percentage.toFixed(1)}
+                            %
                           </span>
                         )}
                       </div>
-                      
+
                       {downloadProgress.has(selectedEpisode.id) && (
                         <div className="download-progress-details">
                           <div className="progress-bar">
-                            <div 
+                            <div
                               className="progress-fill"
-                              style={{ 
-                                width: `${downloadProgress.get(selectedEpisode.id)!.percentage}%` 
+                              style={{
+                                width: `${downloadProgress.get(selectedEpisode.id)!.percentage}%`,
                               }}
                             />
                           </div>
-                          
+
                           <div className="progress-info">
                             <span className="download-size">
-                              {formatFileSize(downloadProgress.get(selectedEpisode.id)!.downloaded_bytes)} / {formatFileSize(downloadProgress.get(selectedEpisode.id)!.total_bytes)}
+                              {formatFileSize(
+                                downloadProgress.get(selectedEpisode.id)!
+                                  .downloaded_bytes
+                              )}{' '}
+                              /{' '}
+                              {formatFileSize(
+                                downloadProgress.get(selectedEpisode.id)!
+                                  .total_bytes
+                              )}
                             </span>
                             <span className="download-speed">
-                              {formatSpeed(downloadProgress.get(selectedEpisode.id)!.speed_bps)}
+                              {formatSpeed(
+                                downloadProgress.get(selectedEpisode.id)!
+                                  .speed_bps
+                              )}
                             </span>
                             <span className="download-eta">
-                              ETA: {formatTimeRemaining(downloadProgress.get(selectedEpisode.id)!.eta_seconds)}
+                              ETA:{' '}
+                              {formatTimeRemaining(
+                                downloadProgress.get(selectedEpisode.id)!
+                                  .eta_seconds
+                              )}
                             </span>
                           </div>
                         </div>
@@ -1151,7 +1311,7 @@ function App() {
                       📥 Download Episode
                     </button>
                   )}
-                  
+
                   {/* User Story #3: Download error handling */}
                   {downloadErrors.has(selectedEpisode.id) && (
                     <div className="download-error">
@@ -1164,6 +1324,24 @@ function App() {
                         onClick={() => downloadEpisode(selectedEpisode)}
                         title="Retry download"
                         data-testid="download-retry-button"
+                      >
+                        🔄 Retry
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Remove Downloaded Episode - Error handling */}
+                  {removeEpisodeErrors.has(selectedEpisode.id) && (
+                    <div className="remove-error">
+                      <span className="error-icon">⚠️</span>
+                      <span className="error-message">
+                        {removeEpisodeErrors.get(selectedEpisode.id)}
+                      </span>
+                      <button
+                        className="retry-button"
+                        onClick={() => removeDownloadedEpisode(selectedEpisode)}
+                        title="Retry removal"
+                        data-testid="remove-retry-button"
                       >
                         🔄 Retry
                       </button>
@@ -1193,58 +1371,82 @@ function App() {
       {/* User Story #4: Remove Podcast Confirmation Dialog */}
       {showRemoveConfirm && (
         <div className="remove-confirm-overlay">
-          <div className="remove-confirm-dialog" role="dialog" aria-labelledby="remove-confirm-title">
+          <div
+            className="remove-confirm-dialog"
+            role="dialog"
+            aria-labelledby="remove-confirm-title"
+          >
             <div className="remove-confirm-header">
               <h3 id="remove-confirm-title">Remove Podcast</h3>
             </div>
-            
+
             <div className="remove-confirm-content">
               <p>
                 Are you sure you want to remove{' '}
                 <strong>
                   {podcasts?.find(p => p.id === showRemoveConfirm)?.name}
-                </strong>?
+                </strong>
+                ?
               </p>
-              
+
               <div className="remove-options">
                 <p className="remove-warning">
-                  ⚠️ This will permanently remove the podcast and all its episodes from your library.
+                  ⚠️ This will permanently remove the podcast and all its
+                  episodes from your library.
                 </p>
-                
+
                 {/* Check if podcast has downloaded episodes */}
-                {episodes?.some(ep => ep.podcast_id === showRemoveConfirm && ep.downloaded) && (
+                {episodes?.some(
+                  ep => ep.podcast_id === showRemoveConfirm && ep.downloaded
+                ) && (
                   <div className="cleanup-warning">
                     <p>
-                      📁 This podcast has downloaded episodes. They will be removed from your computer.
+                      📁 This podcast has downloaded episodes. They will be
+                      removed from your computer.
                     </p>
                   </div>
                 )}
-                
+
                 {/* Check if podcast has episodes on USB device */}
-                {episodes?.some(ep => ep.podcast_id === showRemoveConfirm && ep.on_device) && (
+                {episodes?.some(
+                  ep => ep.podcast_id === showRemoveConfirm && ep.on_device
+                ) && (
                   <div className="device-warning">
                     <p>
-                      📱 Some episodes from this podcast are on your USB device. They will remain there but won't be managed by PodPico anymore.
+                      📱 Some episodes from this podcast are on your USB device.
+                      They will remain there but won't be managed by PodPico
+                      anymore.
                     </p>
                   </div>
                 )}
               </div>
             </div>
-            
+
             <div className="remove-confirm-actions">
               <button
                 className="cancel-button"
                 onClick={cancelRemove}
-                disabled={showRemoveConfirm ? removingPodcasts.has(showRemoveConfirm) : false}
+                disabled={
+                  showRemoveConfirm
+                    ? removingPodcasts.has(showRemoveConfirm)
+                    : false
+                }
               >
                 Cancel
               </button>
               <button
                 className="remove-button"
-                onClick={() => showRemoveConfirm && removePodcast(showRemoveConfirm)}
-                disabled={showRemoveConfirm ? removingPodcasts.has(showRemoveConfirm) : false}
+                onClick={() =>
+                  showRemoveConfirm && removePodcast(showRemoveConfirm)
+                }
+                disabled={
+                  showRemoveConfirm
+                    ? removingPodcasts.has(showRemoveConfirm)
+                    : false
+                }
               >
-                {showRemoveConfirm && removingPodcasts.has(showRemoveConfirm) ? (
+                {showRemoveConfirm &&
+                removingPodcasts.has(showRemoveConfirm) ? (
                   <>⏳ Removing...</>
                 ) : (
                   <>🗑️ Remove Podcast</>

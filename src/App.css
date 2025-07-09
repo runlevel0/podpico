@@ -580,7 +580,9 @@ body {
   color: var(--text-color);
   font-size: 0.9rem;
   width: 250px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .search-clear-button {
@@ -600,7 +602,9 @@ body {
   justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
-  transition: color 0.2s, background-color 0.2s;
+  transition:
+    color 0.2s,
+    background-color 0.2s;
 }
 
 .search-clear-button:hover {
@@ -699,7 +703,7 @@ body {
   .search-input {
     width: 200px;
   }
-  
+
   .search-section {
     flex-wrap: wrap;
   }
@@ -842,7 +846,9 @@ select:focus {
   gap: var(--spacing-sm);
 }
 
-.download-size, .download-speed, .download-eta {
+.download-size,
+.download-speed,
+.download-eta {
   white-space: nowrap;
 }
 
@@ -916,26 +922,99 @@ select:focus {
   .download-progress-container {
     padding: var(--spacing-sm);
   }
-  
+
   .download-progress-header {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-sm);
   }
-  
+
   .progress-info {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .download-error {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .error-message {
     margin-bottom: var(--spacing-sm);
   }
+}
+
+/* Remove Downloaded Episode - Styling */
+.remove-download-actions {
+  margin-top: var(--spacing-sm);
+}
+
+.remove-download-button {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.remove-download-button:hover {
+  background-color: #c62828;
+}
+
+.remove-download-button:disabled {
+  background-color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.removing-indicator {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: var(--spacing-sm) var(--spacing-md);
+  display: inline-block;
+}
+
+/* Remove Episode Error Styling */
+.remove-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-sm);
+  margin-top: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.remove-error .error-icon {
+  color: #ef4444;
+}
+
+.remove-error .error-message {
+  color: #d32f2f;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.remove-error .retry-button {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.remove-error .retry-button:hover {
+  background-color: #dc2626;
 }
 
 /* User Story #4: Remove Podcasts - CSS Styling */
@@ -1228,23 +1307,23 @@ select:focus {
     width: 95%;
     max-width: none;
   }
-  
+
   .remove-confirm-content,
   .remove-confirm-header,
   .remove-confirm-actions {
     padding: var(--spacing-md);
   }
-  
+
   .remove-confirm-actions {
     flex-direction: column-reverse;
   }
-  
+
   .cancel-button,
   .remove-button {
     width: 100%;
     justify-content: center;
   }
-  
+
   .podcast-actions {
     position: static;
     opacity: 1;
@@ -1252,7 +1331,7 @@ select:focus {
     transform: none;
     justify-content: flex-end;
   }
-  
+
   .podcast-main {
     padding-right: 0;
   }
@@ -1323,7 +1402,9 @@ select:focus {
   background-color: var(--background-color);
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
-  transition: background-color 0.2s, border-color 0.2s;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s;
 }
 
 .usb-device-item:hover {
@@ -1393,19 +1474,19 @@ select:focus {
     margin-top: var(--spacing-md);
     padding-top: var(--spacing-md);
   }
-  
+
   .usb-device-item {
     padding: var(--spacing-sm);
   }
-  
+
   .storage-info {
     gap: 6px;
   }
-  
+
   .storage-text {
     font-size: 0.8rem;
   }
-  
+
   .storage-percentage {
     font-size: 0.75rem;
   }
@@ -1416,11 +1497,11 @@ select:focus {
   .storage-progress-bar {
     border: 2px solid var(--text-color);
   }
-  
+
   .storage-progress-fill {
     background: var(--primary-color);
   }
-  
+
   .usb-device-item {
     border: 2px solid var(--border-color);
   }
@@ -1431,7 +1512,7 @@ select:focus {
   .storage-progress-fill {
     transition: none;
   }
-  
+
   .usb-device-item {
     transition: none;
   }
@@ -1611,20 +1692,20 @@ select:focus {
     padding: var(--spacing-sm) var(--spacing-md);
     font-size: 0.8rem;
   }
-  
+
   .transfer-device-selection {
     margin: var(--spacing-xs) 0;
   }
-  
+
   .transfer-error {
     padding: var(--spacing-sm);
   }
-  
+
   .transfer-error .error-message {
     min-width: 150px;
     font-size: 0.8rem;
   }
-  
+
   .transfer-error .retry-button {
     padding: 4px 8px;
     font-size: 0.75rem;
@@ -1636,13 +1717,13 @@ select:focus {
   .transfer-button {
     border: 2px solid #22c55e;
   }
-  
+
   .transfer-progress-container,
   .transfer-status,
   .transfer-error {
     border: 2px solid var(--border-color);
   }
-  
+
   .transfer-device-selection select {
     border: 2px solid var(--border-color);
   }
@@ -1653,11 +1734,11 @@ select:focus {
   .transfer-button {
     transition: none;
   }
-  
+
   .transfer-button:hover {
     transform: none;
   }
-  
+
   .transfer-device-selection select {
     transition: none;
   }
@@ -1816,20 +1897,20 @@ select:focus {
     padding: var(--spacing-sm) var(--spacing-md);
     font-size: 0.8rem;
   }
-  
+
   .remove-device-selection {
     margin: var(--spacing-xs) 0;
   }
-  
+
   .remove-from-device-error {
     padding: var(--spacing-sm);
   }
-  
+
   .remove-from-device-error .error-message {
     min-width: 150px;
     font-size: 0.8rem;
   }
-  
+
   .remove-from-device-error .retry-button {
     padding: 4px 8px;
     font-size: 0.75rem;
@@ -1841,13 +1922,13 @@ select:focus {
   .remove-from-device-button {
     border: 2px solid #ef4444;
   }
-  
+
   .remove-progress-container,
   .remove-status,
   .remove-from-device-error {
     border: 2px solid var(--border-color);
   }
-  
+
   .remove-device-selection select {
     border: 2px solid var(--border-color);
   }
@@ -1858,11 +1939,11 @@ select:focus {
   .remove-from-device-button {
     transition: none;
   }
-  
+
   .remove-from-device-button:hover {
     transform: none;
   }
-  
+
   .remove-device-selection select {
     transition: none;
   }

@@ -54,6 +54,8 @@ pub fn run() {
             // Download management commands
             commands::download_episode,
             commands::get_download_progress,
+            // Episode file management commands
+            commands::delete_downloaded_episode,
             // USB device management commands
             commands::get_usb_devices,
             commands::transfer_episode_to_device,
