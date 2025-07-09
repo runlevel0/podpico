@@ -76,17 +76,17 @@ pub fn run() {
 async fn initialize_app() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     log::info!("Initializing PodPico application...");
 
-    // Create data directory in the current working directory for now
-    let data_dir = std::path::PathBuf::from("./data");
+    // Create data directory OUTSIDE src-tauri to avoid file watcher conflicts
+    let data_dir = std::path::PathBuf::from("../data");
     fs::create_dir_all(&data_dir)?;
     log::info!("Created data directory: {}", data_dir.display());
 
-    // Create downloads directory for episodes
-    let downloads_dir = data_dir.join("episodes");
+    // Create downloads directory for episodes OUTSIDE src-tauri to avoid file watcher conflicts
+    let downloads_dir = std::path::PathBuf::from("../episodes");
     fs::create_dir_all(&downloads_dir)?;
     log::info!("Created downloads directory: {}", downloads_dir.display());
 
-    // Initialize database - create the file first to ensure permissions work
+    // Initialize database OUTSIDE src-tauri to avoid file watcher conflicts
     let db_path = data_dir.join("podcasts.db");
 
     // Create the database file if it doesn't exist

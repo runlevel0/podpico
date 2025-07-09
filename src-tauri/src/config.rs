@@ -21,7 +21,7 @@ impl ConfigManager {
         log::info!("Loading configuration from: {:?}", self.config_path);
         // TODO: Load configuration from file or return defaults
         Ok(AppConfig {
-            download_directory: "./episodes".to_string(),
+            download_directory: "../episodes".to_string(),
             max_concurrent_downloads: 3,
             auto_download_new_episodes: false,
             check_for_updates_interval: 3600,
