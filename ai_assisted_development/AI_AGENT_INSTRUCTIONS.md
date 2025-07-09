@@ -134,6 +134,14 @@ npm run test:run || echo "Frontend tests not configured yet"
 # Test basic compilation with zero warnings
 cd src-tauri && cargo check --all-targets --all-features
 cd .. && npm run tauri dev --help
+
+# Install pre-commit hooks (if not already installed) 
+if [ ! -f .git/hooks/pre-commit ]; then
+    echo "Installing pre-commit hooks for quality enforcement..."
+    ./scripts/install-hooks.sh
+else
+    echo "Pre-commit hooks already installed ✅"
+fi
 ```
 
 ### 3. Context Loading
@@ -1176,22 +1184,54 @@ If moving from one phase/week to another:
 - **Test Edge Cases**: Error conditions, boundary values, network failures
 - **Performance Testing**: Measure against acceptance criteria, don't guess
 
-### Automated Quality Tools (SETUP IN NEXT SESSION)
-```bash
-# Set up pre-commit hooks
-echo '#!/bin/sh
-cargo clippy --all-targets --all-features -- -D warnings
-cargo test --all
-cargo fmt --all -- --check
-' > .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+### Automated Quality Tools (IMPLEMENTED ✅)
 
-# Set up CI/CD quality pipeline (future)
-# - Automated testing on commit
-# - Code coverage reporting  
-# - Security vulnerability scanning
-# - Performance regression detection
+#### Git Pre-Commit Hooks (READY TO USE)
+**Comprehensive pre-commit quality enforcement is now integrated:**
+
+```bash
+# INSTALL PRE-COMMIT HOOKS (One-time setup)
+./scripts/install-hooks.sh
+
+# WHAT'S INSTALLED
+# 1. pre-commit hook - Runs quality checks on staged files
+# 2. commit-msg hook - Validates conventional commit format
+
+# HOW IT WORKS
+# - Automatically runs when you commit
+# - Only checks staged files for performance
+# - Enforces zero-warning policy
+# - Validates commit message format
+
+# BYPASS IF NEEDED (not recommended)
+git commit --no-verify -m "emergency fix"
 ```
+
+#### Pre-Commit Features
+- **Smart Detection**: Only runs relevant checks based on staged files
+- **Backend Checks**: Clippy, formatting, tests for Rust files
+- **Frontend Checks**: ESLint, Prettier, TypeScript, tests for TS/TSX files
+- **Documentation**: Verifies AI docs consistency when modified
+- **Performance**: Optimized to run quickly on staged files only
+- **Commit Messages**: Enforces conventional commits format
+
+#### Commit Message Format
+```bash
+# Standard format
+type(scope): description
+
+# Valid types: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert
+
+# Examples
+git commit -m "feat: add download progress tracking"
+git commit -m "fix(usb): resolve device detection issue"
+git commit -m "test: add coverage for episode transfer"
+
+# AI Agent format
+git commit -m "feat: Session 21 - User Story #3 - Download functionality"
+```
+
+For full documentation, see: `ai_assisted_development/PRE_COMMIT_HOOKS.md`
 
 ### Test-Driven User Story Development
 1. **Read acceptance criteria carefully**
