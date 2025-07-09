@@ -263,6 +263,20 @@ impl FileManager {
                         Some((remaining_bytes as f64 / progress.speed_bytes_per_sec) as u64);
                 }
             }
+        } else {
+            // If progress doesn't exist, create it (essential for frontend progress tracking!)
+            downloads.insert(
+                episode_id,
+                DownloadProgress {
+                    episode_id,
+                    total_bytes: total,
+                    downloaded_bytes: downloaded,
+                    percentage,
+                    speed_bytes_per_sec: 0.0, // Will be calculated later with speed
+                    eta_seconds: None,
+                    status,
+                },
+            );
         }
     }
 
@@ -341,8 +355,31 @@ impl FileManager {
     fn extract_filename_from_url(&self, url: &str, episode_id: i64) -> String {
         // Try to extract filename from URL
         if let Some(filename) = url.split('/').next_back() {
-            if filename.contains('.') && filename.len() < 255 {
-                return filename.to_string();
+            // Remove query parameters (everything after ?)
+            let filename_clean = filename.split('?').next().unwrap_or(filename);
+            
+            // Remove URL fragments (everything after #)
+            let filename_clean = filename_clean.split('#').next().unwrap_or(filename_clean);
+            
+            // Check if it's a valid filename
+            if filename_clean.contains('.') && filename_clean.len() < 255 && !filename_clean.is_empty() {
+                // Sanitize filename - remove/replace invalid characters
+                let sanitized = filename_clean
+                    .chars()
+                    .map(|c| match c {
+                        // Keep alphanumeric, dots, hyphens, underscores
+                        c if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' => c,
+                        // Replace spaces with underscores
+                        ' ' => '_',
+                        // Replace other characters with underscores
+                        _ => '_',
+                    })
+                    .collect::<String>();
+                
+                // Ensure we have a valid extension
+                if sanitized.ends_with(".mp3") || sanitized.ends_with(".m4a") || sanitized.ends_with(".wav") {
+                    return sanitized;
+                }
             }
         }
 

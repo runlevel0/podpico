@@ -424,18 +424,28 @@ function App() {
   // User Story #3: Progress tracking for download episodes
   // Acceptance Criteria: Progress indicators with percentage display
   function startProgressTracking(episodeId: number) {
-    const progressInterval = setInterval(async () => {
+    console.log('DEBUG: Starting progress tracking for episode:', episodeId)
+    
+    // Start checking progress immediately (not after 1 second delay)
+    let progressInterval: NodeJS.Timeout
+    
+    const checkProgress = async () => {
       try {
+        console.log('DEBUG: Requesting progress for episode:', episodeId)
         const progress: DownloadProgress = await invoke('get_download_progress', {
-          episodeId,
+          episodeId: episodeId,
         })
+        
+        console.log('DEBUG: Received progress data:', progress)
 
         // Validate progress data before setting state
         if (progress && typeof progress.percentage === 'number') {
+          console.log('DEBUG: Setting progress state for episode:', episodeId, 'progress:', progress.percentage)
           setDownloadProgress(prev => new Map(prev).set(episodeId, progress))
 
           // Check if download is complete (100% or episode is now downloaded)
           if (progress.percentage >= 100) {
+            console.log('DEBUG: Download completed for episode:', episodeId)
             clearInterval(progressInterval)
             
             // Remove from downloading set
@@ -452,23 +462,62 @@ function App() {
               return newMap
             })
 
-            // Refresh episodes to update downloaded status
+            // Only refresh episodes data, don't change the selected episode/podcast
+            // This prevents the view from changing focus
+            console.log('DEBUG: Refreshing episodes data without changing selection')
             if (selectedPodcast) {
               await loadEpisodes(selectedPodcast.id)
             } else {
               await loadEpisodes(null)
             }
 
-            // Refresh podcasts to update counts
+            // Only refresh podcasts for episode count updates
             await loadPodcasts()
           }
         } else {
-          // Invalid progress data - stop tracking
-          throw new Error('Invalid progress data received')
+          // Invalid or no progress data - this is normal for very fast downloads
+          console.log('DEBUG: No progress data available yet for episode:', episodeId)
+          
+          // For fast downloads, check if the episode is already downloaded
+          // This can happen when the download completes before progress tracking starts
+          if (selectedPodcast) {
+            await loadEpisodes(selectedPodcast.id)
+          } else {
+            await loadEpisodes(null)
+          }
+          
+          // Check if this episode is now marked as downloaded
+          const episodes = await invoke('get_episodes', {
+            podcastId: selectedPodcast?.id || null
+          }) as Episode[]
+          
+          const updatedEpisode = episodes.find(e => e.id === episodeId)
+          if (updatedEpisode?.downloaded) {
+            console.log('DEBUG: Episode completed during fast download, stopping progress tracking')
+            clearInterval(progressInterval)
+            
+            // Remove from downloading set
+            setDownloadingEpisodes(prev => {
+              const newSet = new Set(prev)
+              newSet.delete(episodeId)
+              return newSet
+            })
+
+            // Clear progress tracking
+            setDownloadProgress(prev => {
+              const newMap = new Map(prev)
+              newMap.delete(episodeId)
+              return newMap
+            })
+
+            // Refresh podcasts for episode count updates
+            await loadPodcasts()
+            return
+          }
         }
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.error('Failed to get download progress:', err)
+        console.error('DEBUG: Progress tracking error:', err)
         clearInterval(progressInterval)
         
         setDownloadErrors(prev => new Map(prev).set(episodeId, `Progress tracking failed: ${err}`))
@@ -485,7 +534,13 @@ function App() {
           return newMap
         })
       }
-    }, 1000) // Update progress every second
+    }
+    
+    // Check progress immediately
+    checkProgress()
+    
+    // Then set up interval to check every 500ms (faster than before for better responsiveness)
+    progressInterval = setInterval(checkProgress, 500)
   }
 
   // User Story #3: Format file size for display

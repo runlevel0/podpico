@@ -86,6 +86,17 @@ pub struct DeviceStatusConsistencyReport {
     pub missing_from_database: Vec<String>,
 }
 
+// Progress tracking struct for frontend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DownloadProgressResponse {
+    pub episode_id: i64,
+    pub downloaded_bytes: u64,
+    pub total_bytes: u64,
+    pub percentage: f64,
+    pub speed_bps: f64,        // Frontend expects speed_bps, not speed_bytes_per_sec
+    pub eta_seconds: u64,      // Frontend expects number, not Option<u64>
+}
+
 // Global instances (to be initialized in lib.rs)
 static DATABASE: Mutex<Option<Arc<DatabaseManager>>> = Mutex::const_new(None);
 static RSS_MANAGER: Mutex<Option<Arc<RssManager>>> = Mutex::const_new(None);
@@ -342,40 +353,50 @@ pub async fn search_episodes(
 #[tauri::command]
 pub async fn download_episode(episode_id: i64) -> Result<(), String> {
     log::info!(
-        "Starting download for episode: {} (User Story #3)",
+        "DEBUG: Starting download for episode: {} (User Story #3)",
         episode_id
     );
 
     // Get managers
+    log::info!("DEBUG: Getting database lock");
     let db_lock = DATABASE.lock().await;
     let db = db_lock.as_ref().ok_or("Database not initialized")?;
+    log::info!("DEBUG: Database lock acquired");
 
     // Get episode information
+    log::info!("DEBUG: Getting episode information from database");
     let episodes = db
         .get_episodes(None)
         .await
-        .map_err(|e| format!("Failed to get episode: {}", e))?;
+        .map_err(|e| {
+            log::error!("DEBUG: Failed to get episodes from database: {}", e);
+            format!("Failed to get episode: {}", e)
+        })?;
+    log::info!("DEBUG: Retrieved {} episodes from database", episodes.len());
 
     let episode = episodes
         .iter()
         .find(|e| e.id == episode_id)
-        .ok_or("Episode not found")?;
+        .ok_or_else(|| {
+            log::error!("DEBUG: Episode {} not found in database", episode_id);
+            format!("Episode {} not found", episode_id)
+        })?;
+    log::info!("DEBUG: Found episode: {}", episode.title);
 
     // User Story #3 Acceptance Criteria: Check if already downloaded
     if episode.downloaded {
-        log::info!("Episode {} already downloaded", episode_id);
+        log::info!("DEBUG: Episode {} already downloaded", episode_id);
         return Ok(());
     }
 
-    // Initialize FileManager for this download
-    // TODO: Get download directory from config
-    let file_manager = crate::file_manager::FileManager::new("./episodes");
-    file_manager
-        .initialize()
-        .await
-        .map_err(|e| format!("Failed to initialize file manager: {}", e))?;
+    // Use the initialized FileManager from the global state
+    log::info!("DEBUG: Getting FileManager from global state");
+    let file_lock = FILE_MANAGER.lock().await;
+    let file_manager = file_lock.as_ref().ok_or("File manager not initialized")?;
+    log::info!("DEBUG: FileManager retrieved successfully");
 
     // User Story #3 Acceptance Criteria: Download with progress tracking
+    log::info!("DEBUG: Starting download from URL: {}", episode.episode_url);
     let result = file_manager
         .download_episode(&episode.episode_url, episode_id, episode.podcast_id)
         .await;
@@ -383,39 +404,58 @@ pub async fn download_episode(episode_id: i64) -> Result<(), String> {
     match result {
         Ok(file_path) => {
             log::info!(
-                "Successfully downloaded episode {} to {}",
+                "DEBUG: Successfully downloaded episode {} to {}",
                 episode_id,
                 file_path
             );
 
             // Update database to mark episode as downloaded
+            log::info!("DEBUG: Updating episode downloaded status in database");
             db.update_episode_downloaded_status(episode_id, true, Some(&file_path))
                 .await
-                .map_err(|e| format!("Failed to update episode status: {}", e))?;
+                .map_err(|e| {
+                    log::error!("DEBUG: Failed to update episode status: {}", e);
+                    format!("Failed to update episode status: {}", e)
+                })?;
+            log::info!("DEBUG: Episode status updated successfully");
 
             Ok(())
         }
         Err(e) => {
-            log::error!("Failed to download episode {}: {}", episode_id, e);
+            log::error!("DEBUG: Failed to download episode {}: {}", episode_id, e);
             Err(format!("Download failed: {}", e))
         }
     }
 }
 
 #[tauri::command]
-pub async fn get_download_progress(episode_id: i64) -> Result<f64, String> {
+pub async fn get_download_progress(episode_id: i64) -> Result<DownloadProgressResponse, String> {
     log::info!("Getting download progress for episode: {}", episode_id);
 
-    // User Story #3 Acceptance Criteria: Return download progress percentage
-    // TODO: Get from FileManager singleton when properly implemented
-    // For now, return a basic implementation
-
-    let file_manager = crate::file_manager::FileManager::new("./episodes");
+    // User Story #3 Acceptance Criteria: Return download progress with full details
+    // Use the initialized FileManager from the global state
+    let file_lock = FILE_MANAGER.lock().await;
+    let file_manager = file_lock.as_ref().ok_or("File manager not initialized")?;
 
     if let Some(progress) = file_manager.get_download_progress(episode_id).await {
-        Ok(progress.percentage)
+        Ok(DownloadProgressResponse {
+            episode_id: progress.episode_id,
+            downloaded_bytes: progress.downloaded_bytes,
+            total_bytes: progress.total_bytes,
+            percentage: progress.percentage,
+            speed_bps: progress.speed_bytes_per_sec,
+            eta_seconds: progress.eta_seconds.unwrap_or(0),
+        })
     } else {
-        Ok(0.0) // No download in progress
+        // No download in progress - return default values
+        Ok(DownloadProgressResponse {
+            episode_id,
+            downloaded_bytes: 0,
+            total_bytes: 0,
+            percentage: 0.0,
+            speed_bps: 0.0,
+            eta_seconds: 0,
+        })
     }
 }
 
@@ -614,7 +654,7 @@ pub async fn get_app_config() -> Result<AppConfig, String> {
     log::info!("Getting app configuration");
     // TODO: Implement configuration loading
     Ok(AppConfig {
-        download_directory: "./episodes".to_string(),
+        download_directory: "../episodes".to_string(),
         max_concurrent_downloads: 3,
         auto_download_new_episodes: false,
         check_for_updates_interval: 3600,
