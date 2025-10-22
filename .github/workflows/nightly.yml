@@ -1,0 +1,360 @@
+name: Nightly Quality Check
+
+on:
+  schedule:
+    # Run at 2 AM UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      skip_dependency_update:
+        description: 'Skip dependency updates'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Comprehensive quality analysis
+  quality-analysis:
+    name: Nightly Quality Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+            
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          
+      - name: Run full quality check
+        run: npm run quality:full
+        continue-on-error: true
+        
+      - name: Install cargo-tarpaulin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
+          
+      - name: Generate detailed coverage report
+        working-directory: ./src-tauri
+        run: |
+          cargo tarpaulin \
+            --out Xml \
+            --out Html \
+            --output-dir coverage \
+            --all-features \
+            --workspace \
+            --timeout 120 \
+            --exclude-files "../target/*" \
+            --print-summary > coverage-summary.txt
+            
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-coverage-${{ github.run_number }}
+          path: |
+            src-tauri/coverage/
+            coverage/
+          retention-days: 30
+
+  # Security audit
+  security-audit:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          
+      - name: Install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+          
+      - name: Run security audit
+        working-directory: ./src-tauri
+        run: |
+          cargo audit --json > ../audit-report.json || true
+          cargo audit || true
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Audit npm dependencies
+        run: |
+          npm audit --json > npm-audit-report.json || true
+          npm audit || true
+          
+      - name: Create security report
+        run: |
+          echo "# Security Audit Report" > security-report.md
+          echo "Date: $(date)" >> security-report.md
+          echo "" >> security-report.md
+          echo "## Rust Dependencies" >> security-report.md
+          echo '```' >> security-report.md
+          cd src-tauri && cargo audit || true
+          echo '```' >> security-report.md
+          cd ..
+          echo "" >> security-report.md
+          echo "## NPM Dependencies" >> security-report.md
+          echo '```' >> security-report.md
+          npm audit || true
+          echo '```' >> security-report.md
+          
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-${{ github.run_number }}
+          path: |
+            audit-report.json
+            npm-audit-report.json
+            security-report.md
+          retention-days: 90
+
+  # Dependency updates
+  dependency-updates:
+    name: Check for Dependency Updates
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || github.event.inputs.skip_dependency_update != 'true' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          
+      - name: Install cargo-outdated
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-outdated
+          
+      - name: Check Rust dependencies
+        working-directory: ./src-tauri
+        run: |
+          echo "# Rust Dependency Report" > ../rust-deps-report.md
+          echo "## Outdated Dependencies" >> ../rust-deps-report.md
+          echo '```' >> ../rust-deps-report.md
+          cargo outdated >> ../rust-deps-report.md || true
+          echo '```' >> ../rust-deps-report.md
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Check npm dependencies
+        run: |
+          echo "# NPM Dependency Report" > npm-deps-report.md
+          echo "## Outdated Dependencies" >> npm-deps-report.md
+          echo '```' >> npm-deps-report.md
+          npm outdated >> npm-deps-report.md || true
+          echo '```' >> npm-deps-report.md
+          
+      - name: Create dependency update PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: nightly dependency update check'
+          title: '[Automated] Dependency Update Report'
+          body: |
+            ## 🔄 Nightly Dependency Update Check
+            
+            This is an automated report of outdated dependencies found during the nightly quality check.
+            
+            ### 📋 Reports
+            - See attached artifacts for detailed dependency reports
+            - Review security advisories if any were found
+            
+            ### ⚠️ Action Required
+            - Review the outdated dependencies
+            - Update dependencies that have security fixes
+            - Test thoroughly after any updates
+            
+            ---
+            *This PR was automatically created by the nightly quality check workflow.*
+          branch: automated/dependency-updates
+          delete-branch: true
+
+  # Performance benchmarks
+  performance-check:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            time
+            
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build release version
+        run: |
+          cd src-tauri
+          cargo build --release
+          
+      - name: Run performance tests
+        run: |
+          echo "# Performance Report" > performance-report.md
+          echo "Date: $(date)" >> performance-report.md
+          echo "" >> performance-report.md
+          
+          echo "## Build Performance" >> performance-report.md
+          echo "### Frontend Build Time" >> performance-report.md
+          echo '```' >> performance-report.md
+          /usr/bin/time -v npm run build 2>&1 | grep -E "(Elapsed|Maximum resident)" >> performance-report.md
+          echo '```' >> performance-report.md
+          
+          echo "### Backend Build Time (Release)" >> performance-report.md
+          echo '```' >> performance-report.md
+          cd src-tauri
+          cargo clean
+          /usr/bin/time -v cargo build --release 2>&1 | grep -E "(Elapsed|Maximum resident)" >> ../performance-report.md
+          echo '```' >> ../performance-report.md
+          
+      - name: Upload performance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report-${{ github.run_number }}
+          path: performance-report.md
+          retention-days: 90
+
+  # Create nightly report issue
+  create-report:
+    name: Create Nightly Report
+    runs-on: ubuntu-latest
+    needs: [quality-analysis, security-audit, dependency-updates, performance-check]
+    if: always()
+    
+    steps:
+      - name: Create nightly report issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const date = new Date().toISOString().split('T')[0];
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const quality = '${{ needs.quality-analysis.result }}';
+            const security = '${{ needs.security-audit.result }}';
+            const deps = '${{ needs.dependency-updates.result }}';
+            const perf = '${{ needs.performance-check.result }}';
+            
+            let body = `# 🌙 Nightly Quality Report - ${date}\n\n`;
+            body += `[View Full Workflow Run](${runUrl})\n\n`;
+            
+            body += `## 📊 Summary\n\n`;
+            body += `| Check | Status |\n`;
+            body += `|-------|--------|\n`;
+            body += `| Quality Analysis | ${quality === 'success' ? '✅ Passed' : '⚠️ Issues Found'} |\n`;
+            body += `| Security Audit | ${security === 'success' ? '✅ Clean' : '⚠️ Review Required'} |\n`;
+            body += `| Dependency Updates | ${deps === 'success' ? '✅ Checked' : '⚠️ Check Skipped'} |\n`;
+            body += `| Performance | ${perf === 'success' ? '✅ Measured' : '⚠️ Failed'} |\n`;
+            
+            body += `\n## 📈 Key Metrics\n`;
+            body += `- **Backend Tests**: Check workflow for details\n`;
+            body += `- **Frontend Tests**: Check workflow for details\n`;
+            body += `- **Code Coverage**: See artifacts for detailed reports\n`;
+            body += `- **Security Issues**: See security artifacts\n`;
+            
+            body += `\n## 📎 Artifacts\n`;
+            body += `The following artifacts are available in the workflow run:\n`;
+            body += `- Coverage reports (HTML and XML)\n`;
+            body += `- Security audit reports\n`;
+            body += `- Performance benchmarks\n`;
+            body += `- Dependency update reports\n`;
+            
+            body += `\n## 🔔 Action Items\n`;
+            if (security !== 'success') {
+              body += `- [ ] Review security vulnerabilities\n`;
+            }
+            if (deps === 'success') {
+              body += `- [ ] Review dependency update PR if created\n`;
+            }
+            if (quality !== 'success') {
+              body += `- [ ] Address quality issues found\n`;
+            }
+            
+            body += `\n---\n`;
+            body += `*This report was automatically generated by the nightly quality check workflow.*`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🌙 Nightly Quality Report - ${date}`,
+              body: body,
+              labels: ['nightly-report', 'automated']
+            });

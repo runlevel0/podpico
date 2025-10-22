@@ -1,0 +1,290 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v0.1.0)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Pre-release quality gates
+  quality-gates:
+    name: Release Quality Gates
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+            
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          
+      - name: Run quality checks
+        run: |
+          echo "🔍 Running release quality gates..."
+          
+          # Frontend checks
+          npm run lint
+          npm run type-check
+          npm run format:check
+          npm run test:run
+          
+          # Backend checks
+          cd src-tauri
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+          cargo test --all
+          
+      - name: Install cargo-tarpaulin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
+          
+      - name: Verify coverage threshold
+        working-directory: ./src-tauri
+        run: |
+          cargo tarpaulin \
+            --out Xml \
+            --all-features \
+            --workspace \
+            --timeout 120 \
+            --exclude-files "../target/*" \
+            --fail-under 80
+            
+      - name: Security audit
+        run: |
+          cd src-tauri
+          cargo install cargo-audit || true
+          cargo audit || echo "⚠️ Security audit found issues"
+
+  # Build release artifacts
+  build-release:
+    name: Build Release (${{ matrix.platform }})
+    needs: quality-gates
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-latest, windows-latest, macos-latest]
+        
+    runs-on: ${{ matrix.platform }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Install dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+            
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.event.inputs.version || github.ref_name }}
+          releaseName: 'PodPico ${{ github.event.inputs.version || github.ref_name }}'
+          releaseBody: 'See the release notes below.'
+          releaseDraft: true
+          prerelease: false
+          args: '--verbose'
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            src-tauri/target/release/bundle/
+          retention-days: 7
+
+  # Generate release notes
+  release-notes:
+    name: Generate Release Notes
+    needs: quality-gates
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "# Release Notes" > release-notes.md
+          echo "" >> release-notes.md
+          
+          # Get version
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          echo "## Version: $VERSION" >> release-notes.md
+          echo "Release Date: $(date +'%Y-%m-%d')" >> release-notes.md
+          echo "" >> release-notes.md
+          
+          # Get commit summary
+          echo "## Changes" >> release-notes.md
+          echo "" >> release-notes.md
+          
+          # Get commits since last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            echo "### Commits since $LAST_TAG" >> release-notes.md
+            git log $LAST_TAG..HEAD --oneline | while read line; do
+              echo "- $line" >> release-notes.md
+            done
+          else
+            echo "### All Commits" >> release-notes.md
+            git log --oneline | head -20 | while read line; do
+              echo "- $line" >> release-notes.md
+            done
+          fi
+          
+          echo "" >> release-notes.md
+          echo "## Quality Metrics" >> release-notes.md
+          echo "- ✅ All quality gates passed" >> release-notes.md
+          echo "- ✅ Code coverage ≥ 80%" >> release-notes.md
+          echo "- ✅ Zero linting warnings" >> release-notes.md
+          echo "- ✅ All tests passing" >> release-notes.md
+          
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 7
+
+  # Create GitHub release
+  create-release:
+    name: Create GitHub Release
+    needs: [build-release, release-notes]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+          
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version || github.ref_name }}
+          name: PodPico ${{ github.event.inputs.version || github.ref_name }}
+          body_path: ./artifacts/release-notes/release-notes.md
+          draft: true
+          prerelease: false
+          files: |
+            ./artifacts/release-*/**/*
+          fail_on_unmatched_files: false
+          
+      - name: Comment on release PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ github.event.inputs.version || github.ref_name }}';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const comment = `## 🚀 Release Build Complete!\n\n` +
+              `Version: **${version}**\n\n` +
+              `### ✅ Quality Gates\n` +
+              `- All tests passed\n` +
+              `- Code coverage ≥ 80%\n` +
+              `- Zero warnings (ESLint & Clippy)\n` +
+              `- Security audit completed\n\n` +
+              `### 📦 Artifacts\n` +
+              `- Linux build ✅\n` +
+              `- Windows build ✅\n` +
+              `- macOS build ✅\n\n` +
+              `### 📋 Next Steps\n` +
+              `1. Review the draft release\n` +
+              `2. Update release notes if needed\n` +
+              `3. Publish the release\n\n` +
+              `[View Workflow Run](${runUrl})`;
+            
+            // Find open PRs that might be related to this release
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open'
+            });
+            
+            for (const pr of prs) {
+              if (pr.title.includes('release') || pr.title.includes(version)) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: comment
+                });
+              }
+            }
