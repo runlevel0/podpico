@@ -11,6 +11,7 @@ Not blocking documentation/CI work; track for a dedicated cleanup PR:
 - Stop tracking committed binaries: `episodes/**/*.mp3`, `src-tauri/coverage/tarpaulin-report.html` (`.gitignore` updated; `git rm --cached` still needed)
 - Remove root `COMMIT_MESSAGE.txt` from history on main (deleted in PR; was a stray commit helper)
 - Confirm `episodes/**/*.mp3` glob in `.gitignore` (fixed from malformed `episodes/**.mp3`)
+- ✅ `git rm --cached` applied for tracked `episodes/**/*.mp3` and `src-tauri/coverage/tarpaulin-report.html` (PR continuation)
 
 ## Current Blockers
 
