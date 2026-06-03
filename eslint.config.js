@@ -48,7 +48,8 @@ export default [
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       
-      // Custom rules for zero-warning policy
+      // Lint policy: errors block merges/CI; warnings (no-console, no-explicit-any) are reported only.
+      // See ai_assisted_development/QUALITY_METRICS.md and npm run lint (no --max-warnings 0).
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
