@@ -24,4 +24,6 @@ dist-ssr
 *.sw?
 src-tauri/data/*
 data/podcasts.db
-episodes/**.mp3
+episodes/**/*.mp3
+src-tauri/coverage/
+COMMIT_MESSAGE.txt

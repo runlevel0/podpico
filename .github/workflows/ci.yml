@@ -1,0 +1,77 @@
+# PodPico CI — runs all quality gates on push and PR.
+# Lint, frontend tests, and backend tests use continue-on-error until issue #2 is resolved.
+# https://github.com/runlevel0/podpico/issues/2
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            libssl-dev \
+            pkg-config
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: npm run build
+        run: npm run build
+
+      - name: npm run lint
+        # Issue #2: promote to hard gate when ESLint errors and warnings are fixed
+        continue-on-error: true
+        run: npm run lint
+
+      - name: npm run test:run
+        # Issue #2: promote to hard gate when frontend tests are green
+        continue-on-error: true
+        run: npm run test:run
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.83.0
+          components: clippy, rustfmt
+
+      - name: Cache cargo registry and build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          cache-on-failure: true
+
+      - name: cargo clippy
+        working-directory: src-tauri
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: cargo test --all
+        # Issue #2: promote to hard gate when Rust tests are green
+        continue-on-error: true
+        working-directory: src-tauri
+        run: cargo test --all
