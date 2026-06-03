@@ -96,22 +96,32 @@ done
 # Verify specific content requirements
 echo -e "\n${BLUE}🔍 Checking Content Consistency...${NC}"
 
-# Check PROGRESS.md for current phase and completion percentage
-if grep -q "Phase 1" "$DOCS_DIR/PROGRESS.md" && grep -q "%" "$DOCS_DIR/PROGRESS.md"; then
-    phase_info=$(grep -E "Phase [0-9]|[0-9]+%" "$DOCS_DIR/PROGRESS.md" | head -2)
-    echo -e "  ✅ PROGRESS.md contains phase and completion info"
-    echo "     $phase_info" | tr '\n' ' '
-    echo ""
+# Canonical status section (single source of truth)
+if grep -q "## Current Status" "$DOCS_DIR/PROGRESS.md"; then
+    echo -e "  ✅ PROGRESS.md has canonical ## Current Status section"
 else
-    echo -e "  ❌ PROGRESS.md missing phase/completion information"
+    echo -e "  ❌ PROGRESS.md missing ## Current Status (canonical status block)"
     stale_docs=$((stale_docs + 1))
 fi
 
-# Check QUALITY_METRICS.md for recent test results
-if grep -q "tests passing" "$DOCS_DIR/QUALITY_METRICS.md" && grep -q "Status.*:" "$DOCS_DIR/QUALITY_METRICS.md"; then
-    echo -e "  ✅ QUALITY_METRICS.md contains test status"
+if grep -q "PROGRESS.md#current-status" README.md; then
+    echo -e "  ✅ README.md references PROGRESS.md#current-status"
 else
-    echo -e "  ❌ QUALITY_METRICS.md missing test status information"
+    echo -e "  ❌ README.md should reference ai_assisted_development/PROGRESS.md#current-status"
+    stale_docs=$((stale_docs + 1))
+fi
+
+if grep -q "PROGRESS.md#current-status" "$DOCS_DIR/QUALITY_METRICS.md"; then
+    echo -e "  ✅ QUALITY_METRICS.md references canonical PROGRESS status"
+else
+    echo -e "  ❌ QUALITY_METRICS.md should reference PROGRESS.md#current-status"
+    stale_docs=$((stale_docs + 1))
+fi
+
+if grep -q "Measured gate results" "$DOCS_DIR/QUALITY_METRICS.md"; then
+    echo -e "  ✅ QUALITY_METRICS.md contains measured gate results"
+else
+    echo -e "  ❌ QUALITY_METRICS.md missing measured gate results table"
     stale_docs=$((stale_docs + 1))
 fi
 
@@ -132,17 +142,21 @@ fi
 # Advanced consistency checks
 echo -e "\n${BLUE}🔧 Advanced Consistency Checks...${NC}"
 
-# Check if backend test count is consistent across docs
-backend_tests_quality=$(grep -oE "[0-9]+ tests passing" "$DOCS_DIR/QUALITY_METRICS.md" | head -1 | grep -oE "[0-9]+" || echo "")
-backend_tests_progress=$(grep -oE "[0-9]+ tests passing" "$DOCS_DIR/PROGRESS.md" | head -1 | grep -oE "[0-9]+" || echo "")
-
-if [[ -n "$backend_tests_quality" ]] && [[ -n "$backend_tests_progress" ]]; then
-    if [[ "$backend_tests_quality" == "$backend_tests_progress" ]]; then
-        echo -e "  ✅ Backend test counts consistent across documents ($backend_tests_quality tests)"
-    else
-        echo -e "  ❌ Backend test count mismatch: QUALITY_METRICS.md($backend_tests_quality) vs PROGRESS.md($backend_tests_progress)"
-        stale_docs=$((stale_docs + 1))
-    fi
+# Flag inflated success claims in doc summaries (not negations, targets, or historical disclaimers)
+INFLATED_PATTERNS='107/107 ✅|EXCELLENT – PRODUCTION READY|Overall Quality.*92%|Backend Tests.*107/107'
+inflated_found=0
+if head -n 80 README.md | grep -qE "$INFLATED_PATTERNS"; then
+    echo -e "  ⚠️  README.md may contain unsupported inflated claims"
+    inflated_found=1
+fi
+if head -n 55 "$DOCS_DIR/QUALITY_METRICS.md" | grep -qE "$INFLATED_PATTERNS"; then
+    echo -e "  ⚠️  QUALITY_METRICS.md summary may contain unsupported inflated claims"
+    inflated_found=1
+fi
+if [[ $inflated_found -eq 1 ]]; then
+    stale_docs=$((stale_docs + 1))
+else
+    echo -e "  ✅ README and QUALITY_METRICS summaries avoid inflated success claim patterns"
 fi
 
 # Check if all critical issues marked as resolved have resolution details

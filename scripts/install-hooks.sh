@@ -159,7 +159,7 @@ if [ "$HAS_TS_CHANGES" = true ]; then
         fi
         
         # ESLint on staged files only
-        if ! run_check "ESLint (zero warnings)" "npx eslint $STAGED_TS_FILES --report-unused-disable-directives"; then
+        if ! run_check "ESLint (errors fail; warnings allowed)" "npx eslint $STAGED_TS_FILES --report-unused-disable-directives"; then
             FAILED_CHECKS+=("eslint")
             echo -e "${YELLOW}   Fix with: npm run lint:fix${NC}"
         fi
