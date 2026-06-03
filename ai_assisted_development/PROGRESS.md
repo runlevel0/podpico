@@ -1,5 +1,85 @@
 # PodPico Development Progress
 
+> **Single source of truth:** The [Current Status](#current-status) section is canonical. `README.md` and `QUALITY_METRICS.md` must stay aligned with it. Re-verify locally with the commands in [Measured quality gates](#measured-quality-gates) or via [GitHub Actions CI](https://github.com/runlevel0/podpico/actions).
+
+## Current Status
+
+**Last verified:** 2025-06-03 (agent session — documentation reconciliation + CI)
+
+### Phase and priorities
+
+| Field | Value |
+|-------|-------|
+| Phase | 1 (MVP core) |
+| Next priority | Issue #2 — make test suite and lint gates green |
+| Documentation | This file is the only place to update completion percentages |
+
+### Toolchain and environment
+
+| Item | Documented | Observed (2025-06-03) |
+|------|------------|------------------------|
+| Rust | README: 1.87.0+ | **1.83.0** — project builds and tests run; pin in `rust-toolchain.toml` |
+| Node | 22.16.0+ | 22.x (CI uses Node 22) |
+| Native libs | See `README.md` | `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `libsoup-3.0-dev`, `libssl-dev`, `pkg-config` |
+
+### Measured quality gates
+
+Run from repository root after `npm ci` and system dependencies (see `README.md`).
+
+| Check | Command | Result (2025-06-03) |
+|-------|---------|---------------------|
+| TypeScript build | `npm run build` | Pass |
+| ESLint | `npm run lint` | **Fail** — 122 problems (3 errors, 119 warnings); exit code 1 |
+| Frontend tests | `npm run test:run` | **Fail** — 90 passed, 3 failed, 6 skipped (99 total) |
+| Rust clippy | `cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings` | Pass (0 warnings) |
+| Rust tests | `cd src-tauri && cargo test --all` | **Fail** — 109 passed, 3 failed |
+
+**ESLint errors (blockers for a strict lint gate):** `prefer-const` (~`App.tsx:464`), `react/no-unescaped-entities` (~`:1417`), `no-case-declarations` (~`:272`). Most warnings are `no-console` (107) and `@typescript-eslint/no-explicit-any` (12). Policy: **errors fail; warnings are reported but do not fail** (see `eslint.config.js` and `QUALITY_METRICS.md`).
+
+**Known failures (fix in issue #2 — not this PR):**
+
+- **Rust:** `commands::tests::test_user_story_3_download_episode_basic`, `test_delete_downloaded_episode_command`, `test_delete_downloaded_episode_file_cleanup`
+- **Frontend:** `User Story #3: Download Episodes - End-to-End Integration`; `formats file sizes correctly`; `prevents multiple simultaneous downloads`; `refreshes episodes after successful removal`
+
+CI runs all checks; lint, `npm run test:run`, and `cargo test` use `continue-on-error: true` until issue #2 lands (see `.github/workflows/ci.yml`).
+
+### User stories (18)
+
+Status per column: **done** | **partial** | **missing**. “End-to-end complete” requires all four **done** and no known failing tests for that story.
+
+| # | Story (short) | Backend | Frontend | Tests | Integration |
+|---|---------------|---------|----------|-------|-------------|
+| 1 | Add podcast (RSS) | done | done | done | done |
+| 2 | View episodes | done | done | done | done |
+| 3 | Download episodes | partial | partial | partial | partial |
+| 4 | Remove podcast | done | done | partial | partial |
+| 5 | Mark listened | done | done | done | done |
+| 6 | Episode status icons | done | done | done | done |
+| 7 | Combined inbox | done | done | done | done |
+| 8 | USB capacity | done | partial | partial | partial |
+| 9 | Transfer to USB | done | partial | partial | partial |
+| 10 | Remove from USB | done | partial | partial | partial |
+| 11 | Sync status device ↔ app | missing | missing | missing | missing |
+| 12 | Auto-download | missing | missing | missing | missing |
+| 13 | Download settings | missing | missing | missing | missing |
+| 14 | Search episodes | missing | missing | missing | missing |
+| 15 | Export/import subs | missing | missing | missing | missing |
+| 16 | Podcast artwork | missing | missing | missing | missing |
+| 17 | Playback controls | missing | missing | missing | missing |
+| 18 | Playlists | missing | missing | missing | missing |
+
+**Completion summary**
+
+- **End-to-end complete:** 5/18 (28%) — user stories #1, #2, #5, #6, #7
+- **In progress / partial:** #3–#4, #8–#10 (backend largely implemented; frontend exists for USB/download/remove flows but tests or integration are not fully green)
+- **Not started:** #11–#18 (8 stories)
+
+---
+
+## Historical development log
+
+> **Archive:** Session notes below are retained for context. Marketing language, conflicting percentages (e.g. 7/18 vs 10/18 vs 39%), and “production ready” claims are **not** current status. Session 21 is dated 2025-01-14 but appears above 2025-06-29 entries in older edits — treat dates in this section as approximate session labels, not strict chronology.
+
 ## 🎉 **EXCEPTIONAL DEBUGGING SUCCESS** (Date: 2025-01-14 08:00:00)
 
 **🚀 UNPRECEDENTED IMPROVEMENT: 99% Test Success Rate Achieved**

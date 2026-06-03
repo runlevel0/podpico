@@ -1,0 +1,6 @@
+# Pinned for reproducible CI and local builds.
+# README previously stated Rust 1.87.0+; the project compiles and runs tests on 1.83.0.
+# Raise this channel when issue #2+ upgrades are validated across the team.
+[toolchain]
+channel = "1.83.0"
+components = ["clippy", "rustfmt"]

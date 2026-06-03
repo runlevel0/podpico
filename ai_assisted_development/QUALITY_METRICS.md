@@ -1,179 +1,61 @@
 # PodPico Quality Metrics
 
-**Last Updated**: 2025-01-14 07:11:00
+**Last Updated:** 2025-06-03
 
-## 🚨 **CRITICAL QUALITY STATUS CORRECTION**
+> **Canonical project status and user-story completion:** [`PROGRESS.md`](PROGRESS.md#current-status). This file tracks quality targets and measured gate results only.
 
-**Previous Status**: Incorrectly reported 95% quality score  
-**Actual Status**: Significant quality gaps due to frontend implementation debt
+## Measured gate results (2025-06-03)
 
-## 📊 **CURRENT QUALITY METRICS** (Updated After Session 21 - EXCEPTIONAL SUCCESS)
+Re-run from repo root after `npm ci` and native dependencies (see `README.md`).
 
-### **Overall Project Health**: ✅ **EXCELLENT** (Dramatically Improved)
+| Gate | Command | Result |
+|------|---------|--------|
+| TypeScript build | `npm run build` | Pass |
+| ESLint | `npm run lint` | **Fail** — 122 problems (3 errors, 119 warnings) |
+| Frontend tests | `npm run test:run` | **Fail** — 90 passed, 3 failed, 6 skipped (99 total) |
+| Rust clippy | `cd src-tauri && cargo clippy --all-targets --all-features -- -D warnings` | Pass (0 warnings) |
+| Rust tests | `cd src-tauri && cargo test --all` | **Fail** — 109 passed, 3 failed |
 
-**🎉 BREAKTHROUGH ACHIEVEMENT**: 99% Test Success Rate Achieved  
-**Status**: ✅ 28% improvement in single session, all critical bugs eliminated
+**Follow-up:** Fix failing tests and ESLint errors in [issue #2](https://github.com/runlevel0/podpico/issues/2). CI runs all gates; lint and test steps are soft-fail until that issue closes.
 
-**Completion Status**:
-- **True Complete Features**: 5/18 user stories (28%) - Backend + Frontend + Tests
-- **Backend-Only Features**: 5/18 user stories (28%) - Missing Frontend
-- **Not Started**: 8/18 user stories (44%)
-- **Real Completion Rate**: 28% (with 99% quality on completed features)
+## Lint policy (aligned with `eslint.config.js`)
 
----
+| Severity | Rules (examples) | CI / local |
+|----------|------------------|------------|
+| **Error** | `prefer-const`, `no-debugger`, `@typescript-eslint/no-unused-vars`, … | Fails `npm run lint` (exit 1) |
+| **Warning** | `no-console`, `@typescript-eslint/no-explicit-any`, `react-refresh/only-export-components` | Reported; **does not** use `--max-warnings 0` |
 
-## 🧪 **TESTING METRICS**
+This is **not** a zero-warning codebase today. Do not document “zero warnings enforced” for the frontend until issue #2 promotes warnings or removes them.
 
-### **Backend Testing**: ✅ **EXCELLENT**
-- **Total Tests**: 107 tests passing (100% pass rate)
-- **Coverage**: 74.29% (630/848 lines) with cargo-tarpaulin
-- **Quality**: Comprehensive user story coverage, performance validation, error handling
-- **Status**: ✅ Meets professional standards
+**Rust:** `cargo clippy` with `-D warnings` is enforced (zero Clippy warnings).
 
-**Backend Test Distribution**:
-- User Story #1: 7 tests ✅
-- User Story #2: 4 tests ✅  
-- User Story #3: 8 tests ✅
-- User Story #4: 5 tests ✅
-- User Story #5: 6 tests ✅
-- User Story #6: Covered in #5 ✅
-- User Story #7: 4 tests ✅
-- User Story #8: 8 tests ✅
-- User Story #9: 12 tests ✅
-- User Story #10: 8 tests ✅
-- Additional: Component, integration, and error tests
+## Completion vs quality
 
-### **Frontend Testing**: ✅ **EXCELLENT** (Dramatically Improved)
-- **Total Tests**: 82 tests passing out of 83 (99% success rate)
-- **Coverage**: All 7 implemented user stories have comprehensive tests
-- **Quality**: Production-ready UI testing with full integration coverage
-- **Status**: ✅ EXCEEDS professional standards
+| Metric | Value | Notes |
+|--------|-------|-------|
+| End-to-end complete user stories | 5/18 (28%) | Per `PROGRESS.md` table |
+| Backend tests | 109 pass / 3 fail | Download/delete command tests |
+| Frontend tests | 90 pass / 3 fail / 6 skip | Download/remove flows |
+| Backend Clippy | 0 warnings | Matches enforced policy |
 
-**Frontend Test Achievements**:
-- ✅ User Story #1: Complete RSS subscription testing (3 tests)
-- ✅ User Story #2: Episode viewing and 3-pane layout testing (2 tests)
-- ✅ User Story #3: Download functionality with progress tracking (12 tests)
-- ✅ User Story #4: Podcast removal with confirmation dialogs (15 tests)
-- ✅ User Story #5: Episode status management (8 tests)
-- ✅ User Story #6: Status icon display (covered in other tests)
-- ✅ User Story #7: Combined inbox functionality (6 tests)
-- ✅ Search functionality: Complete search testing (25 tests)
-- ✅ USB device functionality: Full device management testing (11 tests)
-- ✅ Mock infrastructure: Comprehensive Tauri command mocking with proper sequences
+**Do not use** a single “overall quality %” (e.g. 92% or “production ready”) — those figures were inconsistent across older docs and are removed.
 
-### **Integration Testing**: ❌ **CRITICAL GAPS**
-- **End-to-End Tests**: Not implemented
-- **Backend-Frontend Integration**: Only 5/10 user stories tested
-- **User Workflow Tests**: Limited to basic functionality
-- **Cross-Platform Tests**: Not implemented
+## Targets (unchanged goals)
 
----
+| Area | Target | Current |
+|------|--------|---------|
+| Backend Clippy | 0 warnings | Met |
+| Backend tests | 100% pass | Blocked on issue #2 |
+| Frontend ESLint | 0 errors | 3 errors remain |
+| Frontend tests | 100% pass (non-skipped) | 3 failures remain |
+| True feature completion | 18/18 | 5/18 end-to-end |
 
-## 🎯 **PERFORMANCE METRICS**
+## Automation
 
-### **Backend Performance**: ✅ **MEETS REQUIREMENTS**
-- RSS feed parsing: < 5 seconds ✅ (User Story #1 requirement)
-- Episode loading: < 3 seconds ✅ (User Story #2 requirement)
-- USB device detection: < 3 seconds ✅ (User Story #8 requirement)
-- Database queries: < 1 second ✅
-- File operations: < 5 seconds ✅ (User Story #10 requirement)
+- **CI:** `.github/workflows/ci.yml` — all six checks on push/PR
+- **Local:** `./scripts/quality-check.sh` — reports real pass/fail counts (no hardcoded summaries)
+- **Documentation timestamps:** `./scripts/doc-verify.sh` — file freshness only; cannot validate numeric claims
 
-### **Frontend Performance**: 🟡 **PARTIAL MEASUREMENT**
-- Episode list rendering: < 3 seconds ✅ (for implemented features)
-- Search results: < 2 seconds ✅ (User Story #12 requirement)
-- **Not Measured**: Download progress, transfer progress, USB device UI (not implemented)
+## Historical metrics
 
----
-
-## 🔧 **CODE QUALITY METRICS**
-
-### **Backend Code Quality**: ✅ **EXCELLENT**
-- **Clippy Warnings**: 0 ✅ (Zero tolerance enforced)
-- **Compilation**: Clean builds ✅
-- **Error Handling**: Comprehensive ✅
-- **Documentation**: Complete for all public APIs ✅
-- **Logging**: Structured logging throughout ✅
-
-### **Frontend Code Quality**: 🟡 **GOOD WITH GAPS**
-- **ESLint Warnings**: 0 ✅ (Zero tolerance enforced)
-- **TypeScript**: Strict mode operational ✅
-- **Code Formatting**: Prettier consistently applied ✅
-- **Component Architecture**: Well-structured for implemented features ✅
-- **Missing Features**: 50% of required UI components not implemented ❌
-
----
-
-## 📈 **QUALITY TRENDS**
-
-### **Historical Quality Score Corrections**:
-- **Previous Report**: 95% (INACCURATE)
-- **Actual Quality**: 65% (factoring in frontend debt)
-- **Trend**: Significant correction needed
-
-### **Quality Improvement Targets**:
-- **Immediate**: Resolve frontend implementation debt → Target 85%
-- **Short-term**: Complete frontend testing → Target 90%
-- **Medium-term**: End-to-end testing → Target 95%
-
----
-
-## 🚨 **QUALITY GATE STATUS**
-
-### **Current Quality Gates**:
-- ✅ Backend: Zero clippy warnings
-- ✅ Backend: All tests pass
-- ✅ Backend: Code formatting consistent
-- ❌ Frontend: Missing implementations for 5 user stories
-- ❌ Integration: No end-to-end testing
-- ❌ Documentation: Inaccurate status reporting
-
-### **Quality Gate Compliance**: ⚠️ **50% COMPLIANCE**
-
----
-
-## 🎯 **QUALITY IMPROVEMENT ROADMAP**
-
-### **Phase 1: Critical Fixes** (Next 2-3 sessions)
-1. **Frontend Implementation Debt**:
-   - Implement UI for User Stories #3, #4, #8, #9, #10
-   - Add frontend tests with ≥80% coverage
-   - Fix React testing warnings
-
-2. **Documentation Accuracy**:
-   - ✅ Update all progress tracking (in progress)
-   - Establish accurate status verification
-
-### **Phase 2: Enhanced Testing** (Sessions 4-6)
-1. **Integration Testing**:
-   - End-to-end test suite implementation
-   - Cross-platform testing
-   - Performance regression tests
-
-2. **Quality Automation**:
-   - Automated quality gates
-   - Pre-commit hooks
-   - Coverage reporting
-
-### **Phase 3: Production Quality** (Sessions 7+)
-1. **Advanced Quality Assurance**:
-   - Security audit
-   - Accessibility testing
-   - Load testing
-
----
-
-## 📊 **DASHBOARD SUMMARY**
-
-| Metric | Current | Target | Status |
-|--------|---------|--------|--------|
-| **Overall Quality** | 92% | 95% | ✅ Near Target |
-| **Backend Tests** | 107/107 | 100% | ✅ Perfect |
-| **Frontend Tests** | 82/83 (99%) | 100% | ✅ Excellent |
-| **Code Coverage** | 99% (frontend), 74% (backend) | 80% | ✅ Exceeds Target |
-| **Documentation Accuracy** | 95% | 95% | ✅ Perfect |
-| **Feature Completeness** | 28% (true) | 100% | 🟡 In Progress |
-| **Runtime Stability** | 100% | 100% | ✅ Perfect |
-
-**Overall Project Health**: ✅ **EXCELLENT - PRODUCTION READY**
-
-**Critical Success Factor**: Continue with frontend implementation for remaining user stories. Quality foundation is solid and professional-grade. 
+Older versions of this file listed 107/107 backend tests, 82/83 frontend tests, “92% overall quality,” and “EXCELLENT – PRODUCTION READY.” Those claims were **not** supported by a full repo verification run. Session-level history lives in `PROGRESS.md` (historical section) and `SESSION_NOTES.md`.

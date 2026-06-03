@@ -26,12 +26,16 @@ This project is designed for **incremental development across multiple AI agent 
 
 ## 📋 Project Status
 
-- **Phase**: 1 (MVP Core)
-- **Week**: 6 (Major Frontend Implementation Progress)
-- **Overall Progress**: 39% Complete (7/18 user stories truly functional) 🟢 **UP FROM 28% - MAJOR PROGRESS**
-- **Frontend Debt**: Reduced from 5 to 3 user stories (40% reduction achieved!)
-- **Next Priority**: Continue Frontend Implementation for Backend-Ready User Stories (#8, #9, #10)
-- **Success**: User Stories #3 (Download) and #4 (Remove Podcasts) frontends complete
+**Canonical source:** [`ai_assisted_development/PROGRESS.md`](ai_assisted_development/PROGRESS.md#current-status) (updated 2025-06-03). Do not duplicate percentages here without updating that file.
+
+| Metric | Value |
+|--------|-------|
+| Phase | 1 (MVP core) |
+| End-to-end complete user stories | **5/18 (28%)** — #1, #2, #5, #6, #7 |
+| Partial (backend and/or UI; tests not fully green) | #3, #4, #8–#10 |
+| Next priority | [Issue #2](https://github.com/runlevel0/podpico/issues/2) — failing Rust/frontend tests and ESLint errors |
+
+**Latest measured gates:** `npm run build` pass; `npm run lint` fail (3 errors, 119 warnings); `npm run test:run` 90/3/6 (pass/fail/skip); `cargo clippy` pass; `cargo test --all` 109 pass / 3 fail. CI runs these on every PR (soft-fail on lint/tests until #2).
 
 ## 🏗️ Architecture
 
@@ -47,22 +51,26 @@ This project is designed for **incremental development across multiple AI agent 
 - **State Management**: TBD (React hooks vs Redux)
 
 ### Key Features (Implemented/Planned)
-- ✅ RSS feed podcast subscription management (Full frontend ✅)
-- ✅ Episode download with progress tracking (Full frontend ✅)
-- ✅ Podcast removal with safety confirmations (Full frontend ✅)
-- 🔄 USB device detection and file transfer (detection ✅, transfer ✅, frontend pending)
-- ✅ Episode status tracking (New/Unlistened/Listened)
-- ⏳ Configurable settings and preferences
+
+See user-story table in [`PROGRESS.md`](ai_assisted_development/PROGRESS.md#user-stories-18). Summary:
+
+- ✅ RSS subscription, episode list, status tracking, combined inbox (#1, #2, #5–#7)
+- 🟡 Download/remove podcast flows (#3–#4) — UI present; **tests failing** (issue #2)
+- 🟡 USB detect/transfer/remove (#8–#10) — backend strong; frontend partial; integration incomplete
+- ⏳ Settings, search, sync, and stories #11–#18 not started
 
 ## 🛠️ Development Environment
 
 ### Prerequisites
 - Node.js 22.16.0+
-- Rust 1.87.0+
-- System dependencies (installed):
-  - webkit2gtk-4.0-dev
-  - build-essential
-  - libssl-dev
+- Rust **1.83.0** (pinned in `rust-toolchain.toml`; README previously cited 1.87.0+ — project builds on 1.83)
+- Ubuntu/Debian system libraries (required for Tauri backend):
+  ```bash
+  sudo apt-get update
+  sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+    libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev libssl-dev pkg-config
+  ```
+- Then: `npm ci` (or `npm install`)
 
 ### Running the Application
 ```bash
@@ -210,41 +218,7 @@ For development questions or issues:
 
 ---
 
-## 🚀 **MAJOR PROGRESS UPDATE** (Date: 2025-06-29)
+## Historical README notes
 
-**Frontend Implementation Breakthrough**: User Stories #3 and #4 Complete!  
-**Current Status**: 7 user stories have complete frontend implementations (up from 5)
-
-### ✅ **TRULY COMPLETE User Stories (7/18)**:
-- User Story #1: Add podcast subscription ✅
-- User Story #2: View episodes ✅  
-- User Story #3: Download episodes with progress tracking ✅ **NEW!**
-- User Story #4: Remove podcasts with confirmations ✅ **NEW!**
-- User Story #5: Mark episodes as listened ✅
-- User Story #6: Episode status indicators ✅
-- User Story #7: Combined inbox ✅
-
-### 🟡 **BACKEND COMPLETE, FRONTEND MISSING (5/18)**:
-- User Story #3: Download episodes ❌ Frontend missing
-- User Story #4: Remove podcasts ❌ Frontend missing
-- User Story #8: USB device capacity ❌ Frontend missing
-- User Story #9: Transfer to USB ❌ Frontend missing
-- User Story #10: Remove from USB ❌ Frontend missing
-
-### Architecture Section (if applicable)
-Update key features list when new major features are implemented:
-
-### Key Features (Implemented/Planned)
-- ✅ RSS feed podcast subscription management
-- ✅ Episode list display and status management  
-- ✅ Episode status tracking (New/Unlistened/Listened)
-- ✅ Combined inbox for new episodes across podcasts
-- ✅ Search functionality within podcasts
-- 🟡 Episode download (Backend ✅, Frontend ❌)
-- 🟡 USB device detection (Backend ✅, Frontend ❌)
-- 🟡 Episode transfer to USB (Backend ✅, Frontend ❌)
-- 🟡 Podcast removal (Backend ✅, Frontend ❌)
-- ⏳ Configurable settings and preferences
-
-**Current Status**: Frontend implementation debt resolution required for 50% of implemented features
+Older README sections claimed 7/18 complete with #3–#4 “fully complete” while also listing #3–#4 as “frontend missing.” That contradiction is resolved in [`PROGRESS.md`](ai_assisted_development/PROGRESS.md#current-status) (canonical, measured 2025-06-03).
 

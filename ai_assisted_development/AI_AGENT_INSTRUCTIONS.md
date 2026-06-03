@@ -1,6 +1,8 @@
 # AI Agent Development Instructions
 
-**Last Updated**: 2025-06-28 11:20:00
+**Last Updated**: 2025-06-03
+
+> **Status and measured test/lint counts:** Read [`PROGRESS.md`](PROGRESS.md#current-status) first (canonical). Frontend lint policy: ESLint **errors** block; `no-console` / `no-explicit-any` are **warnings** (see `QUALITY_METRICS.md`). Rust: Clippy zero-warning policy still applies.
 
 You are an AI agent taking over a PodPico development session. Follow these comprehensive instructions to ensure high-quality, test-driven development that meets all product requirements and maintains code excellence.
 
