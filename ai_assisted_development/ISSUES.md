@@ -1,8 +1,16 @@
 # PodPico Known Issues and Blockers
 
-**Last Updated**: 2025-06-28 11:20:00
+**Last Updated**: 2025-06-03
 
 This file tracks all known issues, blockers, and technical debt that need to be addressed during development.
+
+## Repo hygiene follow-ups (2025-06-03)
+
+Not blocking documentation/CI work; track for a dedicated cleanup PR:
+
+- Stop tracking committed binaries: `episodes/**/*.mp3`, `src-tauri/coverage/tarpaulin-report.html` (`.gitignore` updated; `git rm --cached` still needed)
+- Remove root `COMMIT_MESSAGE.txt` from history on main (deleted in PR; was a stray commit helper)
+- Confirm `episodes/**/*.mp3` glob in `.gitignore` (fixed from malformed `episodes/**.mp3`)
 
 ## Current Blockers
 
