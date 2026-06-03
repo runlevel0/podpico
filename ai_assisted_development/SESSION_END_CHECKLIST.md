@@ -54,23 +54,17 @@ npm run doc:verify
 ```
 ```
 
-### 2. PROGRESS.md ✅
+### 2. PROGRESS.md ✅ (canonical — update this first)
 **Update Required Sections:**
-- [ ] Current status header with date and completion percentage
-- [ ] Recent achievements section
-- [ ] Quality metrics (test counts, coverage, etc.)
-- [ ] User story completion status
-- [ ] Phase progress indicators
+- [ ] [`#current-status`](PROGRESS.md#current-status): Last verified date, measured gate table, user-story table
+- [ ] Do **not** add conflicting completion % elsewhere; historical notes go under Historical development log
 
 ### 3. QUALITY_METRICS.md ✅
 **Update Required Sections:**
 - [ ] Last Updated timestamp
-- [ ] Overall Quality Score
-- [ ] Backend test results and coverage
-- [ ] Frontend test results and coverage
-- [ ] Linting status (zero warnings policy)
-- [ ] Build status
-- [ ] Performance metrics if applicable
+- [ ] Measured gate results table (from fresh `npm run lint`, `test:run`, `cargo test`)
+- [ ] Link to PROGRESS.md for user-story completion (no separate “overall quality %”)
+- [ ] Lint policy: errors vs warnings (see `eslint.config.js`)
 
 ### 4. ISSUES.md ✅
 **Update Required Actions:**

@@ -1,10 +1,13 @@
 # PodPico Pre-Commit Hooks Documentation
 
-**Last Updated**: 2025-01-15
+**Last Updated**: 2025-06-03
 
 ## 🔍 Overview
 
-PodPico uses Git pre-commit hooks to enforce quality standards automatically before code is committed. These hooks implement the zero-tolerance quality policy by running targeted checks on staged files.
+PodPico uses Git pre-commit hooks to enforce quality standards automatically before code is committed. **Canonical status:** [`PROGRESS.md`](PROGRESS.md#current-status).
+
+- **Rust:** Clippy with `-D warnings` (zero Clippy warnings).
+- **Frontend ESLint:** **errors** block commits; `no-console` and `no-explicit-any` are **warnings** (see `QUALITY_METRICS.md`).
 
 ## 🚀 Quick Start
 
@@ -46,7 +49,7 @@ The pre-commit hook performs intelligent, staged-file-aware quality checks:
 
 #### Frontend (TypeScript/React) Checks  
 - **TypeScript**: Compilation check with strict mode
-- **ESLint**: Zero-warning policy on staged files
+- **ESLint**: Errors fail on staged files; warnings are reported but allowed
 - **Prettier**: Format validation on staged files
 - **Tests**: Runs if < 10 files changed (performance optimization)
 
@@ -77,7 +80,7 @@ Running quality checks on staged files...
 🌐 Frontend Quality Checks
 --------------------------
 ⏳ TypeScript compilation... ✅ PASSED (2s)
-⏳ ESLint (zero warnings)... ✅ PASSED (1s)
+⏳ ESLint (errors fail)... ✅ PASSED (1s)
 ⏳ Prettier formatting... ✅ PASSED (0s)
 ⏳ Frontend tests... ✅ PASSED (4s)
 
